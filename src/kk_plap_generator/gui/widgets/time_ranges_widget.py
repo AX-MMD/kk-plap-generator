@@ -59,7 +59,7 @@ class TimeRangesWidget(PlapWidget):
 
     def update(self):
         self.time_ranges_listbox.delete(0, tk.END)
-        for start, stop in self.app.store.get("time_ranges", []):
+        for start, stop in self.app.store.time_ranges:
             self.time_ranges_listbox.insert(tk.END, f"{start} - {stop}")
 
     def edit_time_range(self, event):
@@ -67,7 +67,7 @@ class TimeRangesWidget(PlapWidget):
         if not selected_index:
             return
 
-        start, stop = self.app.store["time_ranges"][selected_index[0]]
+        start, stop = self.app.store.time_ranges[selected_index[0]]
 
         dialog = TimeRangeDialog(
             self.masterframe,
@@ -77,7 +77,7 @@ class TimeRangesWidget(PlapWidget):
         )
 
         if dialog.is_valid():
-            self.app.store["time_ranges"][selected_index[0]] = (
+            self.app.store.time_ranges[selected_index[0]] = (
                 dialog.start_time,
                 dialog.stop_time,
             )
@@ -88,21 +88,18 @@ class TimeRangesWidget(PlapWidget):
         if selected_index:
             selected_time_range: str = self.time_ranges_listbox.get(selected_index)
             start, stop = selected_time_range.split(" - ")
-            self.app.store["time_ranges"].remove((start, stop))
+            self.app.store.time_ranges.remove((start, stop))
             self.update()
 
     def add_time_range(self):
         dialog = TimeRangeDialog(self.masterframe, title="Add Time Range")
         if dialog.is_valid():
-            start_time = dialog.start_time
-            stop_time = dialog.stop_time
-            if validate_time(start_time) and validate_time(stop_time):
-                self.app.store["time_ranges"].append((start_time, stop_time))
-                self.update()
-            else:
-                tk.messagebox.showerror(
-                    "Validation Error", "Invalid time format. Expected MM:SS.SS"
-                )
+            self.app.store.time_ranges.append((dialog.start_time, dialog.stop_time))
+            self.update()
+        else:
+            tk.messagebox.showerror(
+                "Validation Error", "Invalid time format. Expected MM:SS.SS"
+            )
 
 
 class TimeRangeDialog(simpledialog.Dialog):
@@ -117,20 +114,21 @@ class TimeRangeDialog(simpledialog.Dialog):
         self.cancel_text = "✖"
         self.start_time = start_time
         self.stop_time = stop_time
+        self.is_cancelled = True
         super().__init__(parent, title)
 
     def body(self, master):
-        tk.Label(master, text="Start Time").grid(row=0, column=0)
+        tk.Label(master, text="Start Time").grid(row=2, column=0)
         self.start_time_entry = tk.Entry(master, justify="center")
-        self.start_time_entry.grid(row=0, column=1)
+        self.start_time_entry.grid(row=2, column=1)
         self.start_time_entry.insert(0, self.start_time)
-        tk.Label(master, text="MM:SS.SS").grid(row=0, column=2)
+        tk.Label(master, text="MM:SS.SS").grid(row=2, column=2)
 
-        tk.Label(master, text="Stop Time").grid(row=1, column=0)
+        tk.Label(master, text="Stop Time").grid(row=3, column=0)
         self.stop_time_entry = tk.Entry(master, justify="center")
-        self.stop_time_entry.grid(row=1, column=1)
+        self.stop_time_entry.grid(row=3, column=1)
         self.stop_time_entry.insert(0, self.stop_time)
-        tk.Label(master, text="MM:SS.SS").grid(row=1, column=2)
+        tk.Label(master, text="MM:SS.SS").grid(row=3, column=2)
 
         return self.start_time_entry  # initial focus
 
@@ -157,8 +155,14 @@ class TimeRangeDialog(simpledialog.Dialog):
         box.pack()
 
     def is_valid(self):
-        return validate_time(self.start_time) and validate_time(self.stop_time)
+        return (
+            not self.is_cancelled
+            and validate_time(self.start_time)
+            and self.stop_time == "END"
+            or validate_time(self.stop_time)
+        )
 
     def apply(self):
         self.start_time = self.start_time_entry.get()
-        self.stop_time = self.stop_time_entry.get()
+        self.stop_time = self.stop_time_entry.get().upper()
+        self.is_cancelled = False

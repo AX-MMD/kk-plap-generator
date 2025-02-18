@@ -74,10 +74,8 @@ class RefSwitcherWidget(PlapWidget):
         try:
             self.app.widgets_save()
             if len(self.app.plap_config) < 5:
-                default_entry = load_config_file(self.app.default_config_path)[
-                    "plap_group"
-                ][0]
-                default_entry["interpolable_path"] = self.app.store["interpolable_path"]
+                default_entry = load_config_file(self.app.default_config_path)[0]
+                default_entry.ref_interpolable = self.app.store.ref_interpolable
                 self.app.plap_config.append(default_entry)
                 self.app.current_page = len(self.app.plap_config) - 1
                 self.create_plap_group_buttons()
@@ -99,11 +97,9 @@ class RefSwitcherWidget(PlapWidget):
             messagebox.showerror("ValidationError", e.get_err_str())
 
     def reset_button_action(self):
-        default_entry = load_config_file(self.app.default_config_path)["plap_group"][0]
-        default_entry["interpolable_path"] = self.app.store["interpolable_path"]
-        default_entry["ref_keyframe_time"] = self.app.store["ref_keyframe_time"]
-        self.app.store.update(default_entry)
-        self.app.update_widgets()
+        default_entry = load_config_file(self.app.default_config_path)[0]
+        default_entry.ref_interpolable = self.app.store.ref_interpolable
+        self.app.store = default_entry
 
     def update(self):
         self.create_plap_group_buttons()

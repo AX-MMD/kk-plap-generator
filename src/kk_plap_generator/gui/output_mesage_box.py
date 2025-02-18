@@ -26,15 +26,15 @@ class CustomMessageBox(tk.Toplevel):
         self.lift()  # Bring the dialog to the front
         self.grab_set()  # Make the dialog modal
 
-        # Center the dialog on the parent window
+        # Center the dialog on the screen
         self.update_idletasks()
 
-        parent_x = parent.winfo_rootx()
-        parent_y = parent.winfo_rooty()
-        parent_width = parent.winfo_width()
-        parent_height = parent.winfo_height()
-        self_width = max(self.winfo_width(), 480)
-        self_height = max(self.winfo_height(), 320)
-        x = parent_x + (parent_width // 2) - (self_width // 2)
-        y = parent_y + (parent_height // 2) - (self_height // 2)
+        self_width = max(self.winfo_width(), 600)
+        self_height = max(self.winfo_height(), 400)
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x = (screen_width // 2) - (self_width // 2)
+        y = (screen_height // 2) - (self_height // 2)
         self.geometry(f"{self_width}x{self_height}+{x}+{y}")
+
+        self.update_idletasks()  # Ensure the geometry is updated

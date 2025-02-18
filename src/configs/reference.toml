@@ -1,27 +1,6 @@
 [[plap_group]]
-interpolable_path = "GO Position (Hip o)"
-ref_keyframe_time = "00:00.00"
+ref_interpolable = "GO Position (Hip o)"
 offset = 0.0
 min_pull_out = 0.2
 min_push_in = 0.8
-time_ranges = []
-pattern_string = "V"
-[[plap_group.sound_components]]
-name = "Plap1"
-offset = 0.0
-cutoff = inf
-
-[[plap_group.sound_components]]
-name = "Plap2"
-offset = 0.0
-cutoff = inf
-
-[[plap_group.sound_components]]
-name = "Plap3"
-offset = 0.0
-cutoff = inf
-
-[[plap_group.sound_components]]
-name = "Plap4"
-offset = 0.0
-cutoff = inf
+time_ranges = [["00:00.00", "END"]]

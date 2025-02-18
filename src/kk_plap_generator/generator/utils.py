@@ -1,12 +1,15 @@
+from typing import List
+
+
 class InfiniteIterator:
     def __init__(self, data):
-        self.data = data
-        self.index = 0
+        self.data: List[int] = data
+        self.index: int = 0
 
     def __iter__(self):
         return self
 
-    def __next__(self):
+    def __next__(self) -> int:
         if not self.data:
             raise StopIteration("The data list is empty.")
         value = self.data[self.index]

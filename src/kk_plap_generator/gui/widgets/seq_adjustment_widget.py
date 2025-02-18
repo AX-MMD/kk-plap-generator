@@ -17,7 +17,7 @@ class SeqAdjustmentWidget(PlapWidget):
         super().__init__(app, masterframe)
 
         self.offset_frame = tk.Frame(masterframe, bd=2, relief="solid")
-        self.offset_frame.grid(row=0, column=0, sticky="nsew")
+        self.offset_frame.grid(row=0, column=0, sticky="nsew", rowspan=2)
 
         # Top
         self.top_frame = tk.Frame(self.offset_frame)
@@ -28,10 +28,10 @@ class SeqAdjustmentWidget(PlapWidget):
         # Offset
         self.top_left_frame = tk.Frame(self.top_frame)
         self.top_left_frame.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self.offset_label = tk.Label(self.top_left_frame, text="Sound Offset")
+        self.offset_label = tk.Label(self.top_left_frame, text="Global Offset")
         self.offset_label.pack()
         self.offset_entry = tk.Entry(self.offset_frame, justify="center")
-        self.offset_entry.insert(0, str(self.app.store["offset"]))
+        self.offset_entry.insert(0, str(self.app.store.offset))
         self.offset_entry.bind("<FocusOut>", self.on_focus_out)
         self.offset_entry.pack()
 
@@ -47,7 +47,7 @@ class SeqAdjustmentWidget(PlapWidget):
         self.min_pull_out_slider = tk.Scale(
             self.min_pull_out_frame, from_=0, to=100, orient=tk.HORIZONTAL, resolution=0.5
         )
-        self.min_pull_out_slider.set(self.app.store["min_pull_out"] * 100)
+        self.min_pull_out_slider.set(self.app.store.min_pull_out * 100)
         self.min_pull_out_slider.bind("<ButtonRelease-1>", self.on_pull_slider_release)
 
         # Left button
@@ -79,7 +79,7 @@ class SeqAdjustmentWidget(PlapWidget):
         self.min_push_in_slider = tk.Scale(
             self.min_push_in_frame, from_=0, to=100, orient=tk.HORIZONTAL, resolution=0.5
         )
-        self.min_push_in_slider.set(self.app.store["min_push_in"] * 100)
+        self.min_push_in_slider.set(self.app.store.min_push_in * 100)
         self.min_pull_out_slider.bind("<ButtonRelease-1>", self.on_push_slider_release)
 
         # Left button
@@ -103,10 +103,10 @@ class SeqAdjustmentWidget(PlapWidget):
         self.min_push_in_right_button.pack(side=tk.LEFT)
 
     def on_pull_slider_release(self, event):
-        self.app.store["min_pull_out"] = self.min_pull_out_slider.get() / 100
+        self.app.store.min_pull_out = self.min_pull_out_slider.get() / 100
 
     def on_push_slider_release(self, event):
-        self.app.store["min_push_in"] = self.min_push_in_slider.get() / 100
+        self.app.store.min_push_in = self.min_push_in_slider.get() / 100
 
     def adjust_slider(self, slider, increment):
         current_value = slider.get()
@@ -122,10 +122,10 @@ class SeqAdjustmentWidget(PlapWidget):
 
     def update(self):
         self.offset_entry.delete(0, tk.END)
-        self.offset_entry.insert(0, str(self.app.store["offset"]))
+        self.offset_entry.insert(0, str(self.app.store.offset))
 
-        self.min_pull_out_slider.set(self.app.store["min_pull_out"] * 100)
-        self.min_push_in_slider.set(self.app.store["min_push_in"] * 100)
+        self.min_pull_out_slider.set(self.app.store.min_pull_out * 100)
+        self.min_push_in_slider.set(self.app.store.min_push_in * 100)
 
     def save(self):
         errors = []
@@ -133,14 +133,14 @@ class SeqAdjustmentWidget(PlapWidget):
         if not validate_offset(offset):
             errors.append("Invalid offset format. Expected a decimal compatible value")
             self.offset_entry.delete(0, tk.END)
-            self.offset_entry.insert(0, str(self.app.store["offset"]))
+            self.offset_entry.insert(0, str(self.app.store.offset))
         else:
-            self.app.store["offset"] = float(offset)
+            self.app.store.offset = float(offset)
 
         if errors:
             raise ValidationError(errors=errors)
 
-        self.app.store["min_push_in"] = self.min_push_in_slider.get() / 100
-        self.app.store["min_push_in"] = self.min_push_in_slider.get() / 100
+        self.app.store.min_push_in = self.min_push_in_slider.get() / 100
+        self.app.store.min_push_in = self.min_push_in_slider.get() / 100
 
         return super().save()

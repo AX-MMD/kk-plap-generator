@@ -28,6 +28,5 @@ class ConfigSelectorWidget(PlapWidget):
     def load_selected_config(self, file_path):
         try:
             self.app.load_config(file_path)
-            self.app.update_widgets()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load config file: {e}")

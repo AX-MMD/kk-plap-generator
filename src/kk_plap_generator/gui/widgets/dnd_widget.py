@@ -14,12 +14,15 @@ if typing.TYPE_CHECKING:
 class DnDWidget(PlapWidget):
     def __init__(self, app: "PlapUI", masterframe):
         super().__init__(app, masterframe)
-        self.single_file: typing.Optional[str] = None
-
         self.drag_drop_frame = tk.Frame(masterframe, bd=2, relief="solid")
         self.drag_drop_frame.grid(row=0, column=0, sticky="nsew")
         self.drag_drop_label = tk.Label(
-            self.drag_drop_frame, text="Drop the Single File here"
+            self.drag_drop_frame,
+            text=(
+                "Drop the Single File here"
+                if not self.app.store.ref_single_file
+                else f"[ {os.path.basename(self.app.store.ref_single_file)} ]"
+            ),
         )
         self.drag_drop_label.pack(fill=tk.BOTH, expand=True)
         self.drag_drop_label.drop_target_register(tkinterdnd2.DND_FILES)  # type: ignore
@@ -32,19 +35,19 @@ class DnDWidget(PlapWidget):
         self.select_file_button.pack()
 
     def get_single_file(self):
-        return self.single_file
+        return self.app.store.ref_single_file
 
     def reset_single_file(self):
-        self.single_file = None
+        self.app.store.ref_single_file = ""
         self.drag_drop_label.config(text="Drop the Single File here")
 
     def on_drop(self, event):
-        self.single_file = event.data[1:-1]
+        self.app.store.ref_single_file = event.data[1:-1]
         self.drag_drop_label.config(
-            text=f"[ {os.path.basename(typing.cast(str, self.single_file))} ]"
+            text=f"[ {os.path.basename(self.app.store.ref_single_file)} ]"
         )
 
     def select_file(self):
         file_path = filedialog.askopenfilename(parent=self.app.master)
         if file_path:
-            self.single_file = file_path
+            self.app.store.ref_single_file = file_path

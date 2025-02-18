@@ -12,17 +12,16 @@ from kk_plap_generator.generator.plap_generator import NodeNotFoundError, PlapGe
 from kk_plap_generator.gui.output_mesage_box import CustomMessageBox
 from kk_plap_generator.gui.validators import ValidationError
 from kk_plap_generator.gui.widgets import (
+    ComponentConfigsWidget,
     DnDWidget,
     RefInterpolableWidget,
     SeqAdjustmentWidget,
-    SoundComponentsWidget,
-    SoundPatternWidget,
     TimeRangesWidget,
 )
 from kk_plap_generator.gui.widgets.base import PlapWidget
 from kk_plap_generator.gui.widgets.config_selector_widget import ConfigSelectorWidget
-from kk_plap_generator.models import PlapGroupConfig
-from kk_plap_generator.utils import generate_plaps
+from kk_plap_generator.models import GroupConfig
+from kk_plap_generator.utils import generate_plaps, load_config_file
 
 
 class PlapUI(tk.Frame):
@@ -52,24 +51,27 @@ class PlapUI(tk.Frame):
         self.master.protocol("WM_DELETE_WINDOW", self.on_program_close)  # type: ignore
 
     @property
-    def store(self) -> PlapGroupConfig:
+    def store(self) -> GroupConfig:
         return self._stores[self.current_page]
 
     @store.setter
-    def store(self, value: PlapGroupConfig):
+    def store(self, value: GroupConfig):
         self._stores[self.current_page] = value
+        self.update_widgets()
 
     @property
-    def plap_config(self) -> List[PlapGroupConfig]:
+    def plap_config(self) -> List[GroupConfig]:
         return self._stores
 
     def load_config(self, path: Optional[str] = None):
         try:
             path = path or self.config_path
-            with open(path, "r", encoding="UTF-8") as f:
-                self._stores: List[PlapGroupConfig] = toml.load(f)["plap_group"]
+            self._stores: List[GroupConfig] = load_config_file(path)
             self.current_page = 0
-        except FileNotFoundError:
+            if hasattr(self, "widgets"):
+                self.update_widgets()
+        except FileNotFoundError as e:
+            traceback.print_exc()
             self.wait_window(
                 CustomMessageBox(
                     self,
@@ -77,15 +79,19 @@ class PlapUI(tk.Frame):
                     f"Could not find the config file at {path}.",
                 )
             )
-        except toml.TomlDecodeError:
+            raise e
+        except toml.TomlDecodeError as e:
+            traceback.print_exc()
             self.wait_window(
                 CustomMessageBox(
                     self,
                     "Error",
-                    f"Could not read the config file at {path}.",
+                    f"Could not read the config file at {path}.\n" + str(e),
                 )
             )
-        except KeyError:
+            raise e
+        except KeyError as e:
+            traceback.print_exc()
             self.wait_window(
                 CustomMessageBox(
                     self,
@@ -93,16 +99,19 @@ class PlapUI(tk.Frame):
                     f"Could not find 'plap_group' in the config file at {path}.",
                 )
             )
+            raise e
 
     def save_config(self, path: Optional[str] = None):
         self.widgets_save()
         with open(path or self.config_path, "w", encoding="utf-8") as f:
-            toml.dump({"plap_group": self._stores}, f)
+            toml.dump({"plap_group": [gc.to_toml_dict() for gc in self._stores]}, f)
 
     def on_program_close(self):
         try:
             self.widgets_save()
             self.save_config()
+        except Exception:
+            traceback.print_exc()
         finally:
             self.master.destroy()
 
@@ -145,17 +154,17 @@ class PlapUI(tk.Frame):
         # Reference Interpolable
         self.ref_interpolable_widget = RefInterpolableWidget(self, self.left_frame)
 
-        # Sound Component Names
-        self.sound_components_widget = SoundComponentsWidget(self, self.middle_frame)
-
-        # Sound Pattern
-        self.sound_pattern_widget = SoundPatternWidget(self, self.middle_frame)
-
-        # Sound Offset and Min Pull Out/In
-        self.seq_adjustment_widget = SeqAdjustmentWidget(self, self.right_frame)
+        # Component Configs
+        self.component_configs_widget = ComponentConfigsWidget(self, self.middle_frame)
 
         # Time Ranges
-        self.time_ranges_widget = TimeRangesWidget(self, self.right_frame)
+        self.time_ranges_widget = TimeRangesWidget(self, self.middle_frame)
+
+        # Sound Pattern
+        # self.sound_pattern_widget = SoundPatternWidget(self, self.middle_frame)
+
+        # Global Offset and Min Pull Out/In
+        self.seq_adjustment_widget = SeqAdjustmentWidget(self, self.right_frame)
 
         self.bottom_left_frame = tk.Frame(self)
         self.bottom_left_frame.grid(row=1, column=0, sticky="nsew")
@@ -221,10 +230,10 @@ class PlapUI(tk.Frame):
                 message += f"\n> Missing node: {e.get_node_string()}"
                 if e.node_name == "interpolableGroup":
                     message += f'\n> Could not find the parent group\n    "{e.value}"\n  in the xml file.'
-                    message += f'\n> Make sure the path\n    "{self.store["interpolable_path"]}"\n is correct.'
+                    message += f'\n> Make sure the path\n    "{self.store.ref_interpolable}"\n is correct.'
                 elif e.node_name == "interpolable":
                     message += f'\n> Could not find the interpolable\n    "{e.value}"\n  in the xml file.'
-                    message += f'\n> Make sure you renamed the interpolable to\n    "{self.store["interpolable_path"].split(".")[-1]}"'
+                    message += f'\n> Make sure you renamed the interpolable to\n    "{self.store.ref_interpolable.split(".")[-1]}"'
                     message += (
                         "\n  in the Timeline, even if that was already the original name."
                     )
@@ -259,5 +268,12 @@ class PlapUI(tk.Frame):
 
     @classmethod
     def run(cls):
-        app = cls(master=cls.default_config())
-        app.mainloop()
+        try:
+            app = cls(master=cls.default_config())
+        except Exception:
+            traceback.print_exc()
+        else:
+            try:
+                app.mainloop()
+            except Exception:
+                traceback.print_exc()
