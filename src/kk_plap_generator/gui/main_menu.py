@@ -21,7 +21,7 @@ from kk_plap_generator.gui.widgets import (
 from kk_plap_generator.gui.widgets.base import PlapWidget
 from kk_plap_generator.gui.widgets.config_selector_widget import ConfigSelectorWidget
 from kk_plap_generator.models import GroupConfig
-from kk_plap_generator.utils import generate_plaps, load_config_file
+from kk_plap_generator.gui.utils import generate_plaps, load_config_file
 
 
 class PlapUI(tk.Frame):

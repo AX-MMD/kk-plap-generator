@@ -1,6 +1,8 @@
 import os
 import sys
 
+import xml.etree.ElementTree as et
+
 if getattr(sys, "frozen", False):
     # If the application is run as a bundle, the PyInstaller bootloader
     # sets the sys._MEIPASS attribute to the path of the bundle.
@@ -15,3 +17,5 @@ CONFIG_FILE = os.path.join(CONFIG_FOLDER, "__app__", "config.toml")
 DEFAULT_CONFIG_FILE = os.path.join(CONFIG_FOLDER, "reference.toml")
 TEMPLATE_FOLDER = os.path.join(WORKDIR, "resources")
 TEMPLATE_FILE = os.path.join(TEMPLATE_FOLDER, "template.xml")
+
+TIMELINE_CURVE_TYPES = set()

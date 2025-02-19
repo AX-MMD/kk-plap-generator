@@ -4,7 +4,7 @@ from tkinter import messagebox
 
 from kk_plap_generator.gui.validators import ValidationError
 from kk_plap_generator.gui.widgets.base import PlapWidget
-from kk_plap_generator.utils import load_config_file
+from kk_plap_generator.gui.utils import load_config_file
 
 if typing.TYPE_CHECKING:
     from kk_plap_generator.gui.main_menu import PlapUI

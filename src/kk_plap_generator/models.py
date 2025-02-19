@@ -1,6 +1,8 @@
 import math
 from typing import Dict, List, Tuple, Type
 
+from kk_plap_generator.utils import get_curve_types
+
 
 class ComponentConfig:
     def __init__(self, name: str, *, offset: float = 0.0, **kwargs):
@@ -81,16 +83,20 @@ class PregPlusComponentConfig(ComponentConfig):
         *,
         min_value: int = 0,
         max_value: int = 45,
+        in_curve: str = get_curve_types()[0],
+        out_curve: str = get_curve_types()[0],
         offset: float = 0.0,
         **kwargs,
     ):
         super().__init__(name=name, offset=offset, **kwargs)
         self.min_value: int = min_value
         self.max_value: int = max_value
+        self.in_curve: str = in_curve
+        self.out_curve: str = out_curve
 
     def to_toml_dict(self):
         return dict(
-            super().to_toml_dict(), min_value=self.min_value, max_value=self.max_value
+            super().to_toml_dict(), min_value=self.min_value, max_value=self.max_value, in_curve=self.in_curve, out_curve=self.out_curve
         )
 
 

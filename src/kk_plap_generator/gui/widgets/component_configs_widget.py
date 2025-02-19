@@ -21,6 +21,7 @@ from kk_plap_generator.models import (
     MultiActivableComponentConfig,
     PregPlusComponentConfig,
 )
+from kk_plap_generator.utils import get_curve_types
 
 if TYPE_CHECKING:
     from kk_plap_generator.gui.main_menu import PlapUI
@@ -178,7 +179,33 @@ class ComponentConfigDialog(simpledialog.Dialog):
         for widget in self.extra_fields_frame.winfo_children():
             widget.destroy()
 
-        if self.type_var.get() == MultiActivableComponentConfig.get_conf_type():
+        if self.type_var.get() == ActivableComponentConfig.get_conf_type():
+            self.name_entry.delete(0, tk.END)
+            self.name_entry.insert(0, "AC")
+            self.component_config.name = "AC"
+            ac_config = ActivableComponentConfig.from_toml_dict(
+                **self.component_config.to_toml_dict()
+            )
+            self.component_config = ac_config
+
+            def name_entry_change(event):
+                self.component_config.name = self.name_entry.get()
+
+            self.name_entry.bind("<KeyRelease>", name_entry_change)
+
+            tk.Label(self.extra_fields_frame, text="Offset (sec):").grid(row=1, column=0)
+            self.offset_entry = tk.Entry(self.extra_fields_frame)
+            self.offset_entry.grid(row=1, column=1)
+            self.offset_entry.insert(0, str(ac_config.offset))
+
+            tk.Label(self.extra_fields_frame, text="Cutoff (sec):").grid(row=0, column=0)
+            self.cutoff_entry = tk.Entry(self.extra_fields_frame)
+            self.cutoff_entry.grid(row=0, column=1)
+            self.cutoff_entry.insert(
+                0, str(ac_config.cutoff) if ac_config.cutoff != math.inf else ""
+            )
+
+        elif self.type_var.get() == MultiActivableComponentConfig.get_conf_type():
             self.name_entry.delete(0, tk.END)
             self.name_entry.insert(0, "MAC")
             self.component_config.name = "MAC"
@@ -279,6 +306,23 @@ class ComponentConfigDialog(simpledialog.Dialog):
             self.max_value_entry = tk.Entry(self.extra_fields_frame)
             self.max_value_entry.grid(row=1, column=1)
             self.max_value_entry.insert(0, str(preg_config.max_value))
+
+            # Label and entry for the curve of PregPlusComponentConfig
+            tk.Label(self.extra_fields_frame, text="In Curve:").grid(row=2, column=0)
+            self.in_curve_selector = ttk.Combobox(
+                self.extra_fields_frame,
+                textvariable=preg_config.in_curve,
+                values=get_curve_types(),
+            )
+            self.in_curve_selector.grid(row=2, column=1)
+
+            tk.Label(self.extra_fields_frame, text="In Curve:").grid(row=3, column=0)
+            self.out_curve_selector = ttk.Combobox(
+                self.extra_fields_frame,
+                textvariable=preg_config.out_curve,
+                values=get_curve_types(),
+            )
+            self.out_curve_selector.grid(row=3, column=1)
 
     def add_table_row(self, i=None, item=None):
         if i is None:
@@ -381,6 +425,10 @@ class ComponentConfigDialog(simpledialog.Dialog):
                 self.component_config.min_value = min_value
             if max_value := int(self.max_value_entry.get()):
                 self.component_config.max_value = max_value
+            if in_curve := self.in_curve_selector.get():
+                self.component_config.in_curve = in_curve
+            if out_curve := self.out_curve_selector.get():
+                self.component_config.out_curve = out_curve
 
         self.is_cancelled = False
 

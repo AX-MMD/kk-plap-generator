@@ -181,12 +181,12 @@ class PlapGenerator:
                 )
             )
 
-        for pc in (
+        for ppc in (
             cc for cc in self.component_configs if isinstance(cc, PregPlusComponentConfig)
         ):
             results.append(
                 self.generate_preg_plus_component_xml(
-                    template_tree.getroot(), sections, pc
+                    template_tree.getroot(), sections, ppc
                 )
             )
 
@@ -203,14 +203,16 @@ class PlapGenerator:
         else:
             base_interpolable.set("alias", f"{pc.name}")
 
-        in_keyframe = NOT_FOUND
-        out_keyframe = NOT_FOUND
-        try:
-            (in_keyframe, out_keyframe, *rest) = base_interpolable.findall("keyframe")
-        except ValueError:
-            raise NodeNotFoundError("keyframe", xml_path=self.template_path)
+        in_keyframe = base_interpolable.find(f"keyframe[@alias='{pc.in_curve}']") or NOT_FOUND
+        if in_keyframe is NOT_FOUND:
+            raise NodeNotFoundError(f"keyframe[@alias='{pc.in_curve}']", xml_path=self.template_path)
         else:
             in_keyframe.set("value", str(pc.min_value))
+
+        out_keyframe = base_interpolable.find(f"keyframe[@alias='{pc.out_curve}']") or NOT_FOUND
+        if out_keyframe is NOT_FOUND:
+            raise NodeNotFoundError(f"keyframe[@alias='{pc.out_curve}']", xml_path=self.template_path)
+        else:
             out_keyframe.set("value", str(pc.max_value))
 
         # Remove the template keyframes from our base plap node
