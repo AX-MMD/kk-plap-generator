@@ -96,7 +96,11 @@ class PregPlusComponentConfig(ComponentConfig):
 
     def to_toml_dict(self):
         return dict(
-            super().to_toml_dict(), min_value=self.min_value, max_value=self.max_value, in_curve=self.in_curve, out_curve=self.out_curve
+            super().to_toml_dict(),
+            min_value=self.min_value,
+            max_value=self.max_value,
+            in_curve=self.in_curve,
+            out_curve=self.out_curve,
         )
 
 

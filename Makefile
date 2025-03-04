@@ -2,6 +2,10 @@
 project_path = src/kk_plap_generator
 mypylint = mypy $(project_path) --ignore-missing-imports --no-warn-unused-ignores --warn-redundant-casts --warn-unused-ignores --pretty --show-error-codes --check-untyped-defs
 
+.PHONY: pretty
+pretty:
+	ruff format $(project_path)
+
 .PHONY: format
 format:
 	ruff format $(project_path)

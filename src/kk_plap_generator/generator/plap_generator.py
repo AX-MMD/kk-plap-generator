@@ -143,6 +143,7 @@ class PlapGenerator:
             list(timeline_xml_tree.getroot()), self.interpolable_path.split(".")[-1]
         )
         if ref_interpolable is NOT_FOUND:
+            print(f"Interpolable {self.interpolable_path} not found in the timeline.")
             ref_interpolable = find_interpolable(
                 timeline_xml_tree.getroot(), self.interpolable_path
             )
@@ -152,7 +153,6 @@ class PlapGenerator:
         )
         sections: List["Section"] = []
         for time_start, time_end in self.get_time_ranges_sec():
-            print(f"Time range: {time_start} - {time_end}")
             # Get the keyframes that are within the time range
             kfs = [
                 kf
@@ -160,8 +160,6 @@ class PlapGenerator:
                 if self._round(time_start) - 0.00001 <= time
                 and self._round(time) <= time_end + 0.00001
             ]
-            print(kfs[0].get("time"))
-            print(kfs[-1].get("time"))
             sections.append((self.get_reference(kfs), kfs))
 
         # Get the base nodes from template
@@ -177,7 +175,7 @@ class PlapGenerator:
         ):
             results.append(
                 self.generate_activable_component_xml(
-                    template_tree.getroot(), sections, ac
+                    copy.deepcopy(template_tree.getroot()), sections, ac
                 )
             )
 
@@ -186,7 +184,7 @@ class PlapGenerator:
         ):
             results.append(
                 self.generate_preg_plus_component_xml(
-                    template_tree.getroot(), sections, ppc
+                    copy.deepcopy(template_tree.getroot()), sections, ppc
                 )
             )
 
@@ -203,15 +201,23 @@ class PlapGenerator:
         else:
             base_interpolable.set("alias", f"{pc.name}")
 
-        in_keyframe = base_interpolable.find(f"keyframe[@alias='{pc.in_curve}']") or NOT_FOUND
+        in_keyframe = (
+            base_interpolable.find(f"keyframe[@alias='{pc.in_curve}']") or NOT_FOUND
+        )
         if in_keyframe is NOT_FOUND:
-            raise NodeNotFoundError(f"keyframe[@alias='{pc.in_curve}']", xml_path=self.template_path)
+            raise NodeNotFoundError(
+                f"keyframe[@alias='{pc.in_curve}']", xml_path=self.template_path
+            )
         else:
             in_keyframe.set("value", str(pc.min_value))
 
-        out_keyframe = base_interpolable.find(f"keyframe[@alias='{pc.out_curve}']") or NOT_FOUND
+        out_keyframe = (
+            base_interpolable.find(f"keyframe[@alias='{pc.out_curve}']") or NOT_FOUND
+        )
         if out_keyframe is NOT_FOUND:
-            raise NodeNotFoundError(f"keyframe[@alias='{pc.out_curve}']", xml_path=self.template_path)
+            raise NodeNotFoundError(
+                f"keyframe[@alias='{pc.out_curve}']", xml_path=self.template_path
+            )
         else:
             out_keyframe.set("value", str(pc.max_value))
 
@@ -250,6 +256,7 @@ class PlapGenerator:
                         / reference.estimated_pull_out
                         * pc.max_value
                     )
+                    preg_value = max(preg_value, pc.min_value)
 
                 new_keyframe = (
                     copy.deepcopy(out_keyframe) if is_plap else copy.deepcopy(in_keyframe)
@@ -335,6 +342,13 @@ class PlapGenerator:
         item_configs: List[ActivableComponentConfig] = (
             ac.item_configs if isinstance(ac, MultiActivableComponentConfig) else [ac]
         )
+        offset = (
+            self.offset + ac.offset
+            if isinstance(ac, MultiActivableComponentConfig)
+            else self.offset
+        )
+        cutoff = ac.cutoff if isinstance(ac, MultiActivableComponentConfig) else math.inf
+
         for i, ic in enumerate(item_configs):
             plap: et.Element = copy.deepcopy(base_sfx)
             plap.set("alias", f"{ic.name}")
@@ -348,20 +362,17 @@ class PlapGenerator:
             plap = interpolables[i]
             pc = item_configs[i]
             mute_keyframe = copy.deepcopy(sfx_keyframe)
-            mute_keyframe.set(
-                "time", str(time - 0.1 + self.offset + ac.offset + pc.offset)
-            )
+            mute_keyframe.set("time", str(time - 0.1 + offset + pc.offset))
             mute_keyframe.set("value", "false")
             plap.append(mute_keyframe)
             new_keyframe = copy.deepcopy(sfx_keyframe)
-            new_keyframe.set("time", str(time + self.offset + pc.offset))
+            new_keyframe.set("time", str(time + offset + pc.offset))
             new_keyframe.set("value", "true")
             plap.append(new_keyframe)
-            if pc.cutoff < math.inf:
+            cutoff = pc.cutoff + cutoff if cutoff < math.inf else pc.cutoff
+            if cutoff < math.inf:
                 cutoff_keyframe = copy.deepcopy(sfx_keyframe)
-                cutoff_keyframe.set(
-                    "time", str(time + self.offset + pc.offset + pc.cutoff)
-                )
+                cutoff_keyframe.set("time", str(time + offset + pc.offset + cutoff))
                 cutoff_keyframe.set("value", "false")
                 plap.append(cutoff_keyframe)
 

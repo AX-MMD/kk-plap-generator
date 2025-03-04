@@ -1,7 +1,6 @@
 import os
 import sys
-
-import xml.etree.ElementTree as et
+from typing import List
 
 if getattr(sys, "frozen", False):
     # If the application is run as a bundle, the PyInstaller bootloader
@@ -18,4 +17,4 @@ DEFAULT_CONFIG_FILE = os.path.join(CONFIG_FOLDER, "reference.toml")
 TEMPLATE_FOLDER = os.path.join(WORKDIR, "resources")
 TEMPLATE_FILE = os.path.join(TEMPLATE_FOLDER, "template.xml")
 
-TIMELINE_CURVE_TYPES = set()
+TIMELINE_CURVE_TYPES: List[str] = []

@@ -105,7 +105,7 @@ class ComponentConfigsWidget(PlapWidget):
             self,
             component,
             is_edit=True,
-            title="Edit Sound Component",
+            title="Edit Component",
         )
 
         if dialog.is_valid():
@@ -128,12 +128,12 @@ class ComponentConfigsWidget(PlapWidget):
 class ComponentConfigDialog(simpledialog.Dialog):
     def __init__(
         self,
-        parent: PlapWidget,
+        parent_widget: PlapWidget,
         component_config: Optional[ComponentConfig] = None,
         title=None,
         is_edit: bool = False,
     ):
-        self.parent = parent
+        self.parent_widget = parent_widget
         self.is_cancelled = True
         self.is_edit = is_edit
         self.component_config: ComponentConfig = (
@@ -146,7 +146,7 @@ class ComponentConfigDialog(simpledialog.Dialog):
             value=self.component_config.__class__.get_conf_type()
         )
         self.item_entries: List[Tuple[tk.Entry, tk.Entry, tk.Entry, tk.Button]] = []
-        super().__init__(parent.masterframe, title)
+        super().__init__(parent_widget.masterframe, title)
 
     def body(self, master):
         tk.Label(master, text="Type:").grid(row=0, column=0)
@@ -180,23 +180,22 @@ class ComponentConfigDialog(simpledialog.Dialog):
             widget.destroy()
 
         if self.type_var.get() == ActivableComponentConfig.get_conf_type():
-            self.name_entry.delete(0, tk.END)
-            self.name_entry.insert(0, "AC")
-            self.component_config.name = "AC"
             ac_config = ActivableComponentConfig.from_toml_dict(
                 **self.component_config.to_toml_dict()
             )
             self.component_config = ac_config
 
+            self.name_entry.delete(0, tk.END)
+            if self.is_edit:
+                self.name_entry.insert(0, self.component_config.name)
+            else:
+                self.name_entry.insert(0, "AC")
+                self.component_config.name = "AC"
+
             def name_entry_change(event):
                 self.component_config.name = self.name_entry.get()
 
             self.name_entry.bind("<KeyRelease>", name_entry_change)
-
-            tk.Label(self.extra_fields_frame, text="Offset (sec):").grid(row=1, column=0)
-            self.offset_entry = tk.Entry(self.extra_fields_frame)
-            self.offset_entry.grid(row=1, column=1)
-            self.offset_entry.insert(0, str(ac_config.offset))
 
             tk.Label(self.extra_fields_frame, text="Cutoff (sec):").grid(row=0, column=0)
             self.cutoff_entry = tk.Entry(self.extra_fields_frame)
@@ -206,13 +205,17 @@ class ComponentConfigDialog(simpledialog.Dialog):
             )
 
         elif self.type_var.get() == MultiActivableComponentConfig.get_conf_type():
-            self.name_entry.delete(0, tk.END)
-            self.name_entry.insert(0, "MAC")
-            self.component_config.name = "MAC"
             mac_config = MultiActivableComponentConfig.from_toml_dict(
                 **self.component_config.to_toml_dict()
             )
             self.component_config = mac_config
+
+            self.name_entry.delete(0, tk.END)
+            if self.is_edit:
+                self.name_entry.insert(0, self.component_config.name)
+            else:
+                self.name_entry.insert(0, "MAC")
+                self.component_config.name = "MAC"
 
             def name_entry_change(event):
                 old_name = self.component_config.name
@@ -266,31 +269,21 @@ class ComponentConfigDialog(simpledialog.Dialog):
             )
             self.clear_pattern_string_button.pack()
 
-            # Create the table
-            self.table_frame = tk.Frame(self.extra_fields_frame)
-            self.table_frame.grid(row=2, column=0, columnspan=2)
-
-            headers = ["Name", "Offset (sec)", "Cutoff (sec)", "Delete"]
-            for col, header in enumerate(headers):
-                tk.Label(self.table_frame, text=header).grid(row=0, column=col)
-
-            self.item_entries = []
-            for i, item in enumerate(mac_config.item_configs):
-                self.add_table_row(i, item)
-
-            add_button = tk.Button(
-                self.extra_fields_frame, text="Add", command=self.add_table_row
-            )
-            add_button.grid(row=3, column=0, columnspan=2)
+            # Table for MultiActivableComponentConfig
+            self.mac_table = MACTable(self, self.extra_fields_frame, mac_config)
 
         elif self.type_var.get() == PregPlusComponentConfig.get_conf_type():
-            self.name_entry.delete(0, tk.END)
-            self.name_entry.insert(0, "Preg+")
-            self.component_config.name = "Preg+"
             preg_config: PregPlusComponentConfig = PregPlusComponentConfig(
                 **self.component_config.to_toml_dict()
             )
             self.component_config = preg_config
+
+            self.name_entry.delete(0, tk.END)
+            if self.is_edit:
+                self.name_entry.insert(0, self.component_config.name)
+            else:
+                self.name_entry.insert(0, "Preg+")
+                self.component_config.name = "Preg+"
 
             def name_entry_change(event):
                 self.component_config.name = self.name_entry.get()
@@ -308,66 +301,23 @@ class ComponentConfigDialog(simpledialog.Dialog):
             self.max_value_entry.insert(0, str(preg_config.max_value))
 
             # Label and entry for the curve of PregPlusComponentConfig
+            self._preg_in_curve = tk.StringVar(value=preg_config.in_curve)
             tk.Label(self.extra_fields_frame, text="In Curve:").grid(row=2, column=0)
             self.in_curve_selector = ttk.Combobox(
                 self.extra_fields_frame,
-                textvariable=preg_config.in_curve,
-                values=get_curve_types(),
+                textvariable=self._preg_in_curve,
+                values=list(get_curve_types()),
             )
             self.in_curve_selector.grid(row=2, column=1)
 
-            tk.Label(self.extra_fields_frame, text="In Curve:").grid(row=3, column=0)
+            self._preg_out_curve = tk.StringVar(value=preg_config.out_curve)
+            tk.Label(self.extra_fields_frame, text="Out Curve:").grid(row=3, column=0)
             self.out_curve_selector = ttk.Combobox(
                 self.extra_fields_frame,
-                textvariable=preg_config.out_curve,
-                values=get_curve_types(),
+                textvariable=self._preg_out_curve,
+                values=list(get_curve_types()),
             )
             self.out_curve_selector.grid(row=3, column=1)
-
-    def add_table_row(self, i=None, item=None):
-        if i is None:
-            i = len(self.item_entries)
-            offset = float(self.item_entries[-1][1].get() if self.item_entries else 0)
-            item = ActivableComponentConfig(
-                f"{self.component_config.name}-Item{i + 1}", offset=offset
-            )
-
-        name_entry = tk.Entry(self.table_frame)
-        name_entry.grid(row=i + 1, column=0)
-        name_entry.insert(0, item.name)
-
-        offset_entry = tk.Entry(self.table_frame)
-        offset_entry.grid(row=i + 1, column=1)
-        offset_entry.insert(0, str(item.offset))
-
-        cutoff_entry = tk.Entry(self.table_frame)
-        cutoff_entry.grid(row=i + 1, column=2)
-        cutoff_entry.insert(0, "" if item.cutoff == math.inf else str(item.cutoff))
-
-        def delete_table_row(row=i):
-            self.delete_table_row(row)
-
-        delete_button = tk.Button(self.table_frame, text="-", command=delete_table_row)
-        delete_button.grid(row=i + 1, column=3)
-
-        self.item_entries.append((name_entry, offset_entry, cutoff_entry, delete_button))
-
-    def delete_table_row(self, row):
-        for widget in self.item_entries[row]:
-            cast(Union[tk.Entry, tk.Button], widget).grid_forget()
-        self.item_entries.pop(row)
-        self.update_table_indices()
-
-    def update_table_indices(self):
-        for i, (name_entry, offset_entry, cutoff_entry, delete_button) in enumerate(
-            self.item_entries
-        ):
-            name_entry.grid(row=i + 1, column=0)
-            offset_entry.grid(row=i + 1, column=1)
-            cutoff_entry.grid(row=i + 1, column=2)
-            delete_button.grid(row=i + 1, column=3)
-            name_entry.delete(0, tk.END)
-            name_entry.insert(0, f"{self.component_config.name}-Item{i + 1}")
 
     def add_to_pattern_string(self, char, mac_config: MultiActivableComponentConfig):
         mac_config.pattern += char
@@ -400,6 +350,7 @@ class ComponentConfigDialog(simpledialog.Dialog):
             if offset := self.offset_entry.get():
                 self.component_config.offset = float(offset)
 
+            self.component_config.item_configs = []
             for i, (name_entry, offset_entry, cutoff_entry, _) in enumerate(
                 self.item_entries
             ):
@@ -438,6 +389,85 @@ class ComponentConfigDialog(simpledialog.Dialog):
             and self.component_config is not None
             and self.component_config.name != ""
         )
+
+
+class MACTable(PlapWidget):
+    def __init__(
+        self,
+        parent_widget: ComponentConfigDialog,
+        masterframe,
+        mac_config: MultiActivableComponentConfig,
+    ):
+        super().__init__(parent_widget.parent_widget.app, masterframe)
+
+        self.parent_widget = parent_widget
+        self.component_config: MultiActivableComponentConfig = mac_config
+
+        # Create the table
+        self.table_frame = tk.Frame(masterframe)
+        self.table_frame.grid(row=2, column=0, columnspan=2)
+
+        headers = ["Name", "Offset (sec)", "Cutoff (sec)", "Delete"]
+        for col, header in enumerate(headers):
+            tk.Label(self.table_frame, text=header).grid(row=0, column=col)
+
+        self.item_entries = []
+        for i, item in enumerate(mac_config.item_configs):
+            self.add_table_row(i, item)
+
+        add_button = tk.Button(masterframe, text="Add", command=self.add_table_row)
+        add_button.grid(row=3, column=0, columnspan=2)
+
+    @property
+    def item_entries(self):
+        return self.parent_widget.item_entries
+
+    @item_entries.setter
+    def item_entries(self, value):
+        self.parent_widget.item_entries = value
+
+    def add_table_row(self, i=None, item=None):
+        if i is None:
+            i = len(self.item_entries)
+            offset = float(self.item_entries[-1][1].get() if self.item_entries else 0)
+            item = ActivableComponentConfig(
+                f"{self.component_config.name}-Item{i + 1}", offset=offset
+            )
+
+        name_entry = tk.Entry(self.table_frame)
+        name_entry.grid(row=i + 1, column=0)
+        name_entry.insert(0, item.name)
+
+        offset_entry = tk.Entry(self.table_frame)
+        offset_entry.grid(row=i + 1, column=1)
+        offset_entry.insert(0, str(item.offset))
+
+        cutoff_entry = tk.Entry(self.table_frame)
+        cutoff_entry.grid(row=i + 1, column=2)
+        cutoff_entry.insert(0, "" if item.cutoff == math.inf else str(item.cutoff))
+
+        def delete_table_row(row=i):
+            for widget in self.item_entries[row]:
+                cast(Union[tk.Entry, tk.Button], widget).grid_forget()
+            self.item_entries.pop(row)
+            self.component_config.item_configs.pop(row)
+            self.update_table_indices()
+
+        delete_button = tk.Button(self.table_frame, text="-", command=delete_table_row)
+        delete_button.grid(row=i + 1, column=3)
+
+        self.item_entries.append((name_entry, offset_entry, cutoff_entry, delete_button))
+
+    def update_table_indices(self):
+        for i, (name_entry, offset_entry, cutoff_entry, delete_button) in enumerate(
+            self.item_entries
+        ):
+            name_entry.grid(row=i + 1, column=0)
+            offset_entry.grid(row=i + 1, column=1)
+            cutoff_entry.grid(row=i + 1, column=2)
+            delete_button.grid(row=i + 1, column=3)
+            name_entry.delete(0, tk.END)
+            name_entry.insert(0, f"{self.component_config.name}-Item{i + 1}")
 
     # class ItemConfigsWidget(PlapWidget):
     #     def __init__(self, app: "PlapUI", masterframe):

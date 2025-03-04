@@ -1,0 +1,72 @@
+[[plap_group]]
+ref_interpolable = "GO Position (フォルダー)"
+ref_single_file = "G:/WSS/ScrewThisNoise Koikatsu BetterRepack RX21/BepInEx/plugins/Timeline/Single Files/export.xml"
+time_ranges = [ [ "00:00.3666667", "END",],]
+offset = -0.08
+min_pull_out = 0.2
+min_push_in = 0.8
+[[plap_group.component_configs]]
+name = "Preg+"
+offset = 0.0
+type = "PregPlusComponentConfig"
+min_value = 0
+max_value = 45
+in_curve = "easeBottomCurve"
+out_curve = "easeTopCurve"
+
+[[plap_group.component_configs]]
+name = "MAC"
+offset = -0.13
+type = "MultiActivableComponentConfig"
+cutoff = inf
+pattern = "V"
+[[plap_group.component_configs.item_configs]]
+name = "MAC-Item1"
+offset = 0.0
+type = "ActivableComponentConfig"
+cutoff = inf
+
+[[plap_group.component_configs.item_configs]]
+name = "MAC-Item2"
+offset = 0.0
+type = "ActivableComponentConfig"
+cutoff = inf
+
+[[plap_group.component_configs.item_configs]]
+name = "MAC-Item3"
+offset = 0.0
+type = "ActivableComponentConfig"
+cutoff = inf
+
+[[plap_group.component_configs.item_configs]]
+name = "MAC-Item4"
+offset = 0.0
+type = "ActivableComponentConfig"
+cutoff = inf
+
+[[plap_group.component_configs.item_configs]]
+name = "MAC-Item5"
+offset = 0.0
+type = "ActivableComponentConfig"
+cutoff = inf
+
+[[plap_group.component_configs.item_configs]]
+name = "MAC-Item6"
+offset = 0.0
+type = "ActivableComponentConfig"
+cutoff = inf
+
+[[plap_group.component_configs.item_configs]]
+name = "MAC-Item7"
+offset = 0.0
+type = "ActivableComponentConfig"
+cutoff = inf
+
+
+[[plap_group.component_configs]]
+name = "AC"
+offset = -0.13
+type = "ActivableComponentConfig"
+cutoff = inf
+
+

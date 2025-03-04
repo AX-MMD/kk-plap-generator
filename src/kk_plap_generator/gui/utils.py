@@ -1,7 +1,7 @@
 import os
 import typing
 import xml.etree.ElementTree as et
-from typing import List, Set
+from typing import Dict, List, Tuple
 
 import toml
 
@@ -23,11 +23,15 @@ def log_print(message: str, output: List[str]):
     print(output[-1])
 
 
-def generate_plaps(ref_single_file_path: str, groups: typing.List[GroupConfig]):
-    xml_tree = et.ElementTree()
-    xml_tree.parse(ref_single_file_path)
-    interpolables: typing.List[et.Element] = []
+def generate_plaps(groups: typing.List[GroupConfig]):
+    interpolables: Dict[str, Tuple[et.Element, str]] = {}
     output: typing.List[str] = []
+
+    names = {f"{sc.name}" for group in groups for sc in group.component_configs}
+    log_print(
+        f"Generating xml for ({' '.join(names)})\n",
+        output,
+    )
 
     for group in groups:
         plap_generator = PlapGenerator(
@@ -38,30 +42,31 @@ def generate_plaps(ref_single_file_path: str, groups: typing.List[GroupConfig]):
             time_ranges=group.time_ranges,
             component_configs=group.component_configs,
         )
-        names = (f"{sc.name}" for sc in plap_generator.component_configs)
-        log_print(
-            f"Generating xml for ({' '.join(names)})\n",
-            output,
-        )
-
+        xml_tree = et.ElementTree()
+        xml_tree.parse(group.ref_single_file)
         results = plap_generator.generate_xml(xml_tree)
         for result in results:
             for interpolable in result.interpolables:
+                alias = interpolable.get("alias", "")
+                if alias in interpolables:
+                    interpolables[alias][0].extend(interpolable.findall("keyframe"))
+                    op_type = "Added"
+                else:
+                    interpolables[alias] = (interpolable, group.ref_single_file)
+                    op_type = "Generated"
+
                 log_print(
-                    f"{interpolable.get('alias')}:: Generated {result.keyframes_count} keyframes from {result.time_range[0]} to {result.time_range[1]}",
+                    f"{alias}:: {op_type} {result.keyframes_count} keyframes from {result.time_range[0]} to {result.time_range[1]}",
                     output,
                 )
-                interpolables.append(interpolable)
-        log_print(
-            "==================================================================", output
-        )
+    log_print(
+        "==================================================================", output
+    )
 
-    for interpolable in interpolables:
+    for alias, (interpolable, ref_single_file_path) in interpolables.items():
         tree = et.ElementTree(et.Element("root"))
         tree.getroot().append(interpolable)
-        filename = os.path.join(
-            os.path.dirname(ref_single_file_path), f"{interpolable.get('alias')}.xml"
-        )
+        filename = os.path.join(os.path.dirname(ref_single_file_path), f"{alias}.xml")
         tree.write(filename)
         log_print(f"> Generated '{filename}'", output)
 

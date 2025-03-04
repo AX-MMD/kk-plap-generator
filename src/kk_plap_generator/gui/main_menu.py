@@ -10,6 +10,7 @@ import toml
 from kk_plap_generator import settings
 from kk_plap_generator.generator.plap_generator import NodeNotFoundError, PlapGenerator
 from kk_plap_generator.gui.output_mesage_box import CustomMessageBox
+from kk_plap_generator.gui.utils import generate_plaps, load_config_file
 from kk_plap_generator.gui.validators import ValidationError
 from kk_plap_generator.gui.widgets import (
     ComponentConfigsWidget,
@@ -21,7 +22,6 @@ from kk_plap_generator.gui.widgets import (
 from kk_plap_generator.gui.widgets.base import PlapWidget
 from kk_plap_generator.gui.widgets.config_selector_widget import ConfigSelectorWidget
 from kk_plap_generator.models import GroupConfig
-from kk_plap_generator.gui.utils import generate_plaps, load_config_file
 
 
 class PlapUI(tk.Frame):
@@ -216,9 +216,7 @@ class PlapUI(tk.Frame):
         else:
             try:
                 self.save_config()
-                output = generate_plaps(
-                    self.dnd_widget.get_single_file(), self.plap_config
-                )
+                output = generate_plaps(self.plap_config)
                 CustomMessageBox(
                     self, "Success ✔", "::: Success :::\n\n" + "\n".join(output)
                 )
@@ -233,9 +231,8 @@ class PlapUI(tk.Frame):
                     message += f'\n> Make sure the path\n    "{self.store.ref_interpolable}"\n is correct.'
                 elif e.node_name == "interpolable":
                     message += f'\n> Could not find the interpolable\n    "{e.value}"\n  in the xml file.'
-                    message += f'\n> Make sure you renamed the interpolable to\n    "{self.store.ref_interpolable.split(".")[-1]}"'
                     message += (
-                        "\n  in the Timeline, even if that was already the original name."
+                        "\n> Make sure you renamed the interpolable in the Timeline."
                     )
                     message += "\n  This is needed so an alias is created."
                 else:
