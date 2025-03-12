@@ -8,9 +8,14 @@ def get_curve_types() -> List[str]:
     if not settings.TIMELINE_CURVE_TYPES:
         xml_tree = et.ElementTree()
         xml_tree.parse(settings.TEMPLATE_FILE)
+        interpolable = xml_tree.find("interpolable[@alias='Preg+']")
+        if interpolable is None:
+            raise ValueError(
+                "Could not find template interpolable node with alias 'Preg+'"
+            )
+
         settings.TIMELINE_CURVE_TYPES = [
-            keyframe.get("alias") or "<Missing alias>"
-            for keyframe in xml_tree.find("interpolable[@alias='Preg+']") or []
+            keyframe.get("alias", "<Missing alias>") for keyframe in interpolable
         ]
 
     return list(settings.TIMELINE_CURVE_TYPES)

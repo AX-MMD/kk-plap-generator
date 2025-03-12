@@ -6,23 +6,25 @@
 		</keyframe>
 	</interpolable>
 	<interpolable enabled="true" owner="PregnancyPlus" objectIndex="99999" id="0" bgColorR="1" bgColorG="1" bgColorB="1" alias="Preg+">
-		<keyframe time="0" value="0" alias="LinearCurve">
+		<keyframe time="0" value="0" alias="Same as reference">
+		</keyframe>
+		<keyframe time="1" value="0" alias="LinearCurve">
 			<curveKeyframe time="0" value="0" inTangent="0" outTangent="1"/>
 			<curveKeyframe time="1" value="1" inTangent="1" outTangent="0"/>
 		</keyframe>
-		<keyframe time="1" value="0" alias="easeTopCurve">
+		<keyframe time="2" value="0" alias="easeTopCurve">
 			<curveKeyframe time="0" value="0" inTangent="2" outTangent="2"/>
 			<curveKeyframe time="1" value="1" inTangent="0" outTangent="0"/>
 		</keyframe>
-		<keyframe time="2" value="0" alias="easeBottomCurve">
+		<keyframe time="3" value="0" alias="easeBottomCurve">
 			<curveKeyframe time="0" value="0" inTangent="0" outTangent="0"/>
 			<curveKeyframe time="1" value="1" inTangent="2" outTangent="2"/>
 		</keyframe>
-		<keyframe time="3" value="0" alias="HermiteCurve">
+		<keyframe time="4" value="0" alias="HermiteCurve">
 			<curveKeyframe time="0" value="0" inTangent="0" outTangent="0"/>
 			<curveKeyframe time="1" value="1" inTangent="0" outTangent="0"/>
 		</keyframe>
-		<keyframe time="4" value="0" alias="StairsCurve">
+		<keyframe time="5" value="0" alias="StairsCurve">
 			<curveKeyframe time="0" value="0" inTangent="0" outTangent="0"/>
 			<curveKeyframe time="1" value="1" inTangent="INF" outTangent="0"/>
 		</keyframe>
