@@ -1,5 +1,6 @@
 .DEFAULT_GOAL := all
-project_path = src/kk_plap_generator
+src_path = src
+project_path = $(src_path)/kk_plap_generator
 mypylint = mypy $(project_path) --ignore-missing-imports --no-warn-unused-ignores --warn-redundant-casts --warn-unused-ignores --pretty --show-error-codes --check-untyped-defs
 
 .PHONY: pretty
@@ -20,6 +21,10 @@ lint:
 .PHONY: test
 test:
 	pytest $(project_path)
+
+.PHONY: run
+run:
+	python $(src_path)/run_gui.py
 
 .PHONY: bin
 test:

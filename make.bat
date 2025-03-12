@@ -1,6 +1,7 @@
 @echo off
 
-SET project_path=src/kk_plap_generator
+SET src_path=src
+SET project_path=%src_path%/kk_plap_generator
 SET mypylint=mypy %project_path% --ignore-missing-imports --no-warn-unused-ignores --warn-redundant-casts --warn-unused-ignores --pretty --show-error-codes --check-untyped-defs
 
 IF /I "%1"==".DEFAULT_GOAL " GOTO .DEFAULT_GOAL 
@@ -9,6 +10,7 @@ IF /I "%1"=="format" GOTO format
 IF /I "%1"=="lint" GOTO lint
 IF /I "%1"=="test" GOTO test
 IF /I "%1"=="bin" GOTO bin
+IF /I "%1"=="run" GOTO run
 GOTO error
 
 :.DEFAULT_GOAL 
@@ -33,6 +35,10 @@ GOTO error
 
 :test
 	pytest %project_path%
+	GOTO :EOF
+
+:run
+	python %src_path%/run_gui.py
 	GOTO :EOF
 
 :bin

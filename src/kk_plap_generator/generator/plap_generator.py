@@ -123,23 +123,6 @@ class PlapGenerator:
         self.component_configs: List[ComponentConfig] = component_configs
         self.template_path = template_path
 
-    def get_time_ranges_sec(self) -> List[Tuple[float, float]]:
-        if self.time_ranges:
-            ranges = [
-                [convert_KKtime_to_seconds(tg[0]), convert_KKtime_to_seconds(tg[1])]
-                for tg in self.time_ranges
-            ]
-            # Make sure the ranges are sorted and don't overlap
-            ranges.sort(key=lambda x: x[0])
-            for i in range(0, len(ranges) - 1):
-                if ranges[i][1] > ranges[i + 1][0]:
-                    ranges[i][1] = ranges[i + 1][0] - 0.00001
-
-            return [(ranges[i][0], ranges[i][1]) for i in range(0, len(ranges))]
-
-        else:
-            return [(0.0, math.inf)]
-
     def generate_xml(
         self, timeline_xml_tree: et.ElementTree
     ) -> List["PlapGenerator.GeneratorResult"]:
@@ -207,7 +190,7 @@ class PlapGenerator:
                 distance = abs(value - reference.value)
                 if (
                     value * reference.out_direction
-                    > reference.value * reference.out_direction
+                    < reference.value * reference.out_direction
                 ):
                     preg_value = pc.max_value
                     is_plap = True
@@ -221,7 +204,7 @@ class PlapGenerator:
                         * pc.max_value
                     )
                     preg_value = max(preg_value, pc.min_value)
-                    is_plap, _ = self.evaluate_is_plap(reference, value, is_plap)
+                    is_plap = self.evaluate_is_plap(reference, value, is_plap)
 
                 new_keyframe = (
                     copy.deepcopy(out_keyframe) if is_plap else copy.deepcopy(in_keyframe)
@@ -240,6 +223,7 @@ class PlapGenerator:
                 base_interpolable.append(new_keyframe)
 
         base_interpolable.set("alias", f"{pc.name}")
+
         return PlapGenerator.GeneratorResult(
             [base_interpolable],
             len(list(base_interpolable)),  # Keyframes count
@@ -333,8 +317,10 @@ class PlapGenerator:
 
         for keyframe in keyframes:
             value = keyframe_get(keyframe, reference.axis)
-            did_plap, changed = self.evaluate_is_plap(reference, value, did_plap)
-            if changed and did_plap:
+            will_plap = self.evaluate_is_plap(reference, value, did_plap)
+            if did_plap and not will_plap:
+                did_plap = False
+            elif not did_plap and will_plap:
                 did_plap, curve_keyframe_times = self.get_plaps_from_curve_keyframes(
                     KeyframeReference(
                         keyframe,
@@ -345,7 +331,6 @@ class PlapGenerator:
                     list(prev_keyframe),
                     curve_reference=prev_keyframe,
                 )
-
                 keyframe_times += curve_keyframe_times
 
                 if not did_plap:
@@ -362,9 +347,9 @@ class PlapGenerator:
         curve_keyframes: List[et.Element],
         curve_reference: et.Element,
     ) -> Tuple[bool, List[float]]:
+        # We will evaluate the curve keyframes to see if there are any plaps in the interpolation curve.
         keyframe_times: List[float] = []
         did_plap = False
-
         if not curve_keyframes:
             return did_plap, keyframe_times
 
@@ -388,45 +373,45 @@ class PlapGenerator:
             value = evaluated_values[i]
             value_diff = reference.value - keyframe_get(curve_reference, reference.axis)
             value = self._round(reference.value - value_diff * (1.0 - value))
-            did_plap, changed = self.evaluate_is_plap(reference, value, did_plap)
-            if changed and did_plap:
-                if evaluated_values[i + 1] >= evaluated_values[i]:
-                    # If next point on the curve is greater than current, continue
-                    did_plap = False
-                else:
+            will_plap = self.evaluate_is_plap(reference, value, did_plap)
+            if not did_plap and will_plap:
+                if evaluated_values[i] > evaluated_values[i + 1]:
                     time_diff = reference.time - keyframe_get(curve_reference, "time")
                     time_offset = time_diff * (1.0 - time)
                     keyframe_times.append(self._round(reference.time - time_offset))
+                    did_plap = True
+            elif did_plap and not will_plap:
+                did_plap = False
 
         return did_plap, keyframe_times
 
     def evaluate_is_plap(
         self, reference: "KeyframeReference", value: float, did_plap: bool
-    ) -> Tuple[bool, bool]:
+    ) -> bool:
         distance = abs(reference.value - value)
         if did_plap:
-            # Only re-enable plapping after a minimum distance in the out direction is reached.
+            # Only say not plapping after a minimum distance in the out direction is reached.
             # This is to avoid spam during rapid micro movements, like during orgams and such.
             if (
                 value * reference.out_direction
                 > reference.value * reference.out_direction
-                # Round to avoid floating point errors
                 and distance
                 >= self._round(self.min_pull_out * reference.estimated_pull_out)
+                # Round to avoid floating point errors
             ):
-                return False, True
+                return False
             else:
-                return did_plap, False
+                return did_plap
 
-        # Only plap if we did not plap on the last keyframe and are close enough to the reference keyframe.
+        # Only says plapping if close enough to the reference keyframe.
         elif (
             value * reference.out_direction <= reference.value * reference.out_direction
             or distance
             < self._round((1.0 - self.min_push_in) * reference.estimated_pull_out)
         ):
-            return True, True
+            return True
         else:
-            return did_plap, False
+            return did_plap
 
     def make_sections(self, ref_interpolable: et.Element) -> List["Section"]:
         sections: List[Section] = []
@@ -503,13 +488,6 @@ class PlapGenerator:
             for j in range(min(6, len(node_list)))
         )
 
-        print(keyframe_get(reference, axis))
-        print(
-            *(keyframe_get(node_list[j], axis) for j in range(min(6, len(node_list)))),
-            sep=", ",
-        )
-        print(estimated_pull_out)
-
         return KeyframeReference(
             reference,
             axis=axis,
@@ -571,6 +549,23 @@ class PlapGenerator:
         root.remove(base_sfx)
 
         return base_sfx, sfx_keyframe
+
+    def get_time_ranges_sec(self) -> List[Tuple[float, float]]:
+        if self.time_ranges:
+            ranges = [
+                [convert_KKtime_to_seconds(tg[0]), convert_KKtime_to_seconds(tg[1])]
+                for tg in self.time_ranges
+            ]
+            # Make sure the ranges are sorted and don't overlap
+            ranges.sort(key=lambda x: x[0])
+            for i in range(0, len(ranges) - 1):
+                if ranges[i][1] > ranges[i + 1][0]:
+                    ranges[i][1] = ranges[i + 1][0] - 0.00001
+
+            return [(ranges[i][0], ranges[i][1]) for i in range(0, len(ranges))]
+
+        else:
+            return [(0.0, math.inf)]
 
     def _round(self, value: float) -> float:
         return round(value, 5)
