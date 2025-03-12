@@ -6,7 +6,9 @@
 		</keyframe>
 	</interpolable>
 	<interpolable enabled="true" owner="PregnancyPlus" objectIndex="99999" id="0" bgColorR="1" bgColorG="1" bgColorB="1" alias="Preg+">
-		<keyframe time="0" value="0" alias="Same as reference">
+		<keyframe time="0" value="0" alias="SameAsReference">
+			
+			
 		</keyframe>
 		<keyframe time="1" value="0" alias="LinearCurve">
 			<curveKeyframe time="0" value="0" inTangent="0" outTangent="1"/>

@@ -64,3 +64,11 @@ def find_interpolable(root: et.Element, target: str) -> et.Element:
         raise NodeNotFoundError("interpolable", tag, value)
 
     return node
+
+
+def find_node(root: et.Element, target: str, raise_exec: bool = True) -> et.Element:
+    r = root.find(target)
+    if r is None and raise_exec:
+        raise NodeNotFoundError(target)
+
+    return NODE_NOT_FOUND if r is None else r

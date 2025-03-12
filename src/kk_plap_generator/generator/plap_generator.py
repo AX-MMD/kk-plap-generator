@@ -11,6 +11,7 @@ from typing import (
 from xml.etree import ElementTree as et
 
 from kk_plap_generator import settings
+from kk_plap_generator.generator.curve_ops import evaluate_curve
 from kk_plap_generator.generator.models import KeyframeReference, Section
 from kk_plap_generator.generator.utils import (
     InfiniteIterator,
@@ -20,9 +21,9 @@ from kk_plap_generator.generator.utils import (
 )
 from kk_plap_generator.generator.xml_node_finder import (
     NODE_NOT_FOUND,
-    NodeNotFoundError,
     deep_find_interpolable,
     find_interpolable,
+    find_node,
 )
 from kk_plap_generator.models import (
     ActivableComponentConfig,
@@ -205,10 +206,8 @@ class PlapGenerator:
                 value = keyframe_get(keyframe, reference.axis)
                 distance = abs(value - reference.value)
                 if (
-                    reference.out_direction == -1
-                    and value > reference.value
-                    or reference.out_direction == 1
-                    and value < reference.value
+                    value * reference.out_direction
+                    > reference.value * reference.out_direction
                 ):
                     preg_value = pc.max_value
                     is_plap = True
@@ -222,6 +221,7 @@ class PlapGenerator:
                         * pc.max_value
                     )
                     preg_value = max(preg_value, pc.min_value)
+                    is_plap, _ = self.evaluate_is_plap(reference, value, is_plap)
 
                 new_keyframe = (
                     copy.deepcopy(out_keyframe) if is_plap else copy.deepcopy(in_keyframe)
@@ -232,7 +232,7 @@ class PlapGenerator:
                 )
                 new_keyframe.set("value", str(preg_value))
 
-                if new_keyframe.get("alias") == "Same as reference":
+                if len(list(new_keyframe)) == 0:
                     for curve_keyframe in list(keyframe):
                         new_keyframe.append(copy.deepcopy(curve_keyframe))
 
@@ -270,7 +270,7 @@ class PlapGenerator:
         for section in sections:
             keyframe_times += self.get_plaps_from_keyframes(
                 section.reference, section.keyframes
-            )[1]
+            )
 
         # Create the interpolables
         interpolables: List[et.Element] = []
@@ -321,76 +321,112 @@ class PlapGenerator:
         reference: "KeyframeReference",
         keyframes: List[et.Element],
         curve_reference: Optional[et.Element] = None,
-    ) -> Tuple[bool, List[float]]:
+    ) -> List[float]:
         keyframe_times: List[float] = []
         did_plap = False
-        pull_out_dist = reference.estimated_pull_out
         # out direction 1 means the reference is pulling away by increasing his axis value
         # (ex. out direction 1) impact at X:0.0, pulling away to X:1.0
         # (ex. out direction -1) impact at X:0.0, pulling away to X:-1.0
         # (ex. out direction 1) impact at X:-2.0, pulling away to X:7.0
         # (ex. out direction -1) impact at X:-2.0, pulling away to X:-9.0
-        out_direction = reference.out_direction
         prev_keyframe: et.Element = et.Element("base")
 
         for keyframe in keyframes:
-            if curve_reference is not None:
-                # When in curve mode, it means we found a plap keyframe and are currently
-                # checking if at any point in the interpolation curve of the previous
-                # keyframe there was one or more plaps. (can happen in custom curves)
-                value_diff = reference.value - keyframe_get(
-                    curve_reference, reference.axis
+            value = keyframe_get(keyframe, reference.axis)
+            did_plap, changed = self.evaluate_is_plap(reference, value, did_plap)
+            if changed and did_plap:
+                did_plap, curve_keyframe_times = self.get_plaps_from_curve_keyframes(
+                    KeyframeReference(
+                        keyframe,
+                        axis=reference.axis,
+                        out_direction=reference.out_direction,
+                        estimated_pull_out=reference.estimated_pull_out,
+                    ),
+                    list(prev_keyframe),
+                    curve_reference=prev_keyframe,
                 )
-                value = self._round(
-                    reference.value - value_diff * (1.0 - keyframe_get(keyframe, "value"))
-                )
-            else:
-                value = keyframe_get(keyframe, reference.axis)
 
-            distance = abs(reference.value - value)
+                keyframe_times += curve_keyframe_times
 
-            if did_plap:
-                # Only re-enable plapping after a minimum distance in the out direction is reached.
-                # This is to avoid spam during rapid micro movements, like during orgams and such.
-                if (
-                    value * out_direction > reference.value * out_direction
-                    # Round to avoid floating point errors
-                    and distance >= self._round(self.min_pull_out * pull_out_dist)
-                ):
-                    did_plap = False
-
-            # Only plap if we did not plap on the last keyframe and are close enough to the reference keyframe.
-            elif (
-                value * out_direction <= reference.value * out_direction
-                or distance < self._round((1.0 - self.min_push_in) * pull_out_dist)
-            ):
-                if curve_reference is not None:
-                    time_diff = reference.time - keyframe_get(curve_reference, "time")
-                    time_offset = time_diff * (1.0 - keyframe_get(keyframe, "time"))
-                    keyframe_times.append(self._round(reference.time - time_offset))
-                else:
-                    did_plap, curve_keyframe_times = self.get_plaps_from_keyframes(
-                        KeyframeReference(
-                            keyframe,
-                            axis=reference.axis,
-                            out_direction=reference.out_direction,
-                            estimated_pull_out=reference.estimated_pull_out,
-                        ),
-                        list(prev_keyframe),
-                        curve_reference=prev_keyframe,
-                    )
-                    keyframe_times += curve_keyframe_times
-
-                    if not did_plap:
-                        keyframe_times.append(keyframe_get(keyframe, "time"))
-
-                did_plap = True
-
-            # Else we are probably not completely pulled out or in a spasm, so we do nothing.
+                if not did_plap:
+                    keyframe_times.append(keyframe_get(keyframe, "time"))
+                    did_plap = True
 
             prev_keyframe = keyframe
 
+        return keyframe_times
+
+    def get_plaps_from_curve_keyframes(
+        self,
+        reference: "KeyframeReference",
+        curve_keyframes: List[et.Element],
+        curve_reference: et.Element,
+    ) -> Tuple[bool, List[float]]:
+        keyframe_times: List[float] = []
+        did_plap = False
+
+        if not curve_keyframes:
+            return did_plap, keyframe_times
+
+        evaluated_times, evaluated_values = evaluate_curve(
+            [
+                (
+                    keyframe_get(ckf, "time"),
+                    keyframe_get(ckf, "value"),
+                    keyframe_get(ckf, "inTangent"),
+                    keyframe_get(ckf, "outTangent"),
+                )
+                for ckf in curve_keyframes
+            ]
+        )
+
+        for i in range(0, len(evaluated_values) - 1):
+            # We found a plap keyframe and are currently checking if at any point in the
+            # interpolation curve of the previous keyframe there was one or more plaps.
+            # (can happen in custom curves)
+            time = evaluated_times[i]
+            value = evaluated_values[i]
+            value_diff = reference.value - keyframe_get(curve_reference, reference.axis)
+            value = self._round(reference.value - value_diff * (1.0 - value))
+            did_plap, changed = self.evaluate_is_plap(reference, value, did_plap)
+            if changed and did_plap:
+                if evaluated_values[i + 1] >= evaluated_values[i]:
+                    # If next point on the curve is greater than current, continue
+                    did_plap = False
+                else:
+                    time_diff = reference.time - keyframe_get(curve_reference, "time")
+                    time_offset = time_diff * (1.0 - time)
+                    keyframe_times.append(self._round(reference.time - time_offset))
+
         return did_plap, keyframe_times
+
+    def evaluate_is_plap(
+        self, reference: "KeyframeReference", value: float, did_plap: bool
+    ) -> Tuple[bool, bool]:
+        distance = abs(reference.value - value)
+        if did_plap:
+            # Only re-enable plapping after a minimum distance in the out direction is reached.
+            # This is to avoid spam during rapid micro movements, like during orgams and such.
+            if (
+                value * reference.out_direction
+                > reference.value * reference.out_direction
+                # Round to avoid floating point errors
+                and distance
+                >= self._round(self.min_pull_out * reference.estimated_pull_out)
+            ):
+                return False, True
+            else:
+                return did_plap, False
+
+        # Only plap if we did not plap on the last keyframe and are close enough to the reference keyframe.
+        elif (
+            value * reference.out_direction <= reference.value * reference.out_direction
+            or distance
+            < self._round((1.0 - self.min_push_in) * reference.estimated_pull_out)
+        ):
+            return True, True
+        else:
+            return did_plap, False
 
     def make_sections(self, ref_interpolable: et.Element) -> List["Section"]:
         sections: List[Section] = []
@@ -435,7 +471,6 @@ class PlapGenerator:
 
     def get_reference(self, node_list: List[et.Element]) -> "KeyframeReference":
         # The first keyframe of a time range should be a keyframe where the two bodies collide.
-        ref_index = 0
         reference = node_list[0]
 
         # We check the next keyframe and calculate the difference between reference and next_keyframe.
@@ -443,7 +478,7 @@ class PlapGenerator:
         # We also use the difference to determnine the direction of the pull out as 1 or -1.
         next_frame = None
         try:
-            next_frame = node_list[ref_index + 1]
+            next_frame = node_list[1]
         except IndexError:
             raise IndexError("The reference keyframe cannot be the last keyframe.")
 
@@ -465,8 +500,15 @@ class PlapGenerator:
         # between the reference keyframe and (up too) the next 5 keyframes.
         estimated_pull_out = max(
             abs(keyframe_get(node_list[j], axis) - keyframe_get(reference, axis))
-            for j in range(ref_index, min(ref_index + 6, len(node_list)))
+            for j in range(min(6, len(node_list)))
         )
+
+        print(keyframe_get(reference, axis))
+        print(
+            *(keyframe_get(node_list[j], axis) for j in range(min(6, len(node_list)))),
+            sep=", ",
+        )
+        print(estimated_pull_out)
 
         return KeyframeReference(
             reference,
@@ -496,33 +538,14 @@ class PlapGenerator:
     def make_preg_plus_nodes(
         self, root: et.Element, pc: PregPlusComponentConfig
     ) -> Tuple[et.Element, et.Element, et.Element]:
-        base_interpolable = root.find("""interpolable[@alias='Preg+']""")
-        if base_interpolable is None:
-            raise NodeNotFoundError(
-                "interpolable", tag="alias", value="Preg+", xml_path=self.template_path
-            )
-        else:
-            base_interpolable.set("alias", f"{pc.name}")
+        base_interpolable = find_node(root, "interpolable[@alias='Preg+']")
+        base_interpolable.set("alias", f"{pc.name}")
 
-        in_keyframe = (
-            base_interpolable.find(f"keyframe[@alias='{pc.in_curve}']") or NODE_NOT_FOUND
-        )
-        if in_keyframe is NODE_NOT_FOUND:
-            raise NodeNotFoundError(
-                f"keyframe[@alias='{pc.in_curve}']", xml_path=self.template_path
-            )
-        else:
-            in_keyframe.set("value", str(pc.min_value))
+        in_keyframe = find_node(base_interpolable, f"keyframe[@alias='{pc.in_curve}']")
+        in_keyframe.set("value", str(pc.min_value))
 
-        out_keyframe = (
-            base_interpolable.find(f"keyframe[@alias='{pc.out_curve}']") or NODE_NOT_FOUND
-        )
-        if out_keyframe is NODE_NOT_FOUND:
-            raise NodeNotFoundError(
-                f"keyframe[@alias='{pc.out_curve}']", xml_path=self.template_path
-            )
-        else:
-            out_keyframe.set("value", str(pc.max_value))
+        out_keyframe = find_node(base_interpolable, f"keyframe[@alias='{pc.out_curve}']")
+        out_keyframe.set("value", str(pc.max_value))
 
         # Remove the template keyframes from our base node
         for child in list(base_interpolable):
@@ -535,21 +558,11 @@ class PlapGenerator:
     def make_activable_nodes(
         self, root: et.Element, ac: ActivableComponentConfig
     ) -> Tuple[et.Element, et.Element]:
-        base_sfx: et.Element = (
-            root.find("""interpolable[@alias='3DSE']""") or NODE_NOT_FOUND
-        )
-        if base_sfx is NODE_NOT_FOUND:
-            raise NodeNotFoundError(
-                "interpolable", tag="alias", value="3DSE", xml_path=self.template_path
-            )
-        else:
-            base_sfx.set("alias", f"{ac.name}")
+        base_sfx: et.Element = find_node(root, "interpolable[@alias='3DSE']")
+        base_sfx.set("alias", f"{ac.name}")
 
-        sfx_keyframe = base_sfx.find("keyframe") or NODE_NOT_FOUND
-        if sfx_keyframe is NODE_NOT_FOUND:
-            raise NodeNotFoundError("keyframe", xml_path=self.template_path)
-        else:
-            sfx_keyframe.set("value", "false")
+        sfx_keyframe = find_node(base_sfx, "keyframe")
+        sfx_keyframe.set("value", "false")
 
         # Remove the template keyframes from our base plap node
         for child in list(base_sfx):

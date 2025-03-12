@@ -8,7 +8,7 @@ import tkinterdnd2
 import toml
 
 from kk_plap_generator import settings
-from kk_plap_generator.generator.plap_generator import NodeNotFoundError, PlapGenerator
+from kk_plap_generator.generator import NodeNotFoundError, PlapGenerator
 from kk_plap_generator.gui.output_mesage_box import CustomMessageBox
 from kk_plap_generator.gui.utils import generate_plaps, load_config_file
 from kk_plap_generator.gui.validators import ValidationError

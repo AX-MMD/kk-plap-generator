@@ -55,9 +55,15 @@ def keyframes_sets():
     for keyframe in r["simple_w_curve"]:
         keyframe.extend(
             [
-                et.Element("curve", time="0", value="0.0"),
-                et.Element("curve", time="0.5", value="1.0"),
-                et.Element("curve", time="0.90", value="0.0"),
+                et.Element(
+                    "curve", time="0", value="0.0", inTangent="0.0", outTangent="0.0"
+                ),
+                et.Element(
+                    "curve", time="0.5", value="1.0", inTangent="0.0", outTangent="0.0"
+                ),
+                et.Element(
+                    "curve", time="0.90", value="0.0", inTangent="0.0", outTangent="0.0"
+                ),
             ]
         )
     r["under_push"].extend(
@@ -117,38 +123,56 @@ def keyframes_sets():
 @pytest.fixture
 def curve_keyframe_simple_sets():
     r = {
-        "basic": et.Element("interpolable"),
+        "basic_2frames": et.Element("interpolable"),
         "one_plap_no_reset": et.Element("interpolable"),
         "one_plap_w_reset": et.Element("interpolable"),
         "multi_plap_w_reset": et.Element("interpolable"),
     }
-    r["basic"].extend(
+    r["basic_2frames"].extend(
         [
-            et.Element("curve", time="0", value="0.0"),
-            et.Element("curve", time="1.0", value="1.0"),
+            et.Element("curve", time="0", value="0.0", inTangent="0.0", outTangent="0.0"),
+            et.Element(
+                "curve", time="1.0", value="1.0", inTangent="0.0", outTangent="0.0"
+            ),
         ]
     )
     r["one_plap_no_reset"].extend(
         [
-            et.Element("curve", time="0", value="0.0"),
-            et.Element("curve", time="0.5", value="1.0"),
-            et.Element("curve", time="0.8", value="9.0"),
+            et.Element("curve", time="0", value="0.0", inTangent="0.0", outTangent="0.0"),
+            et.Element(
+                "curve", time="0.5", value="1.0", inTangent="0.0", outTangent="0.0"
+            ),
+            et.Element(
+                "curve", time="0.8", value="0.9", inTangent="0.0", outTangent="0.0"
+            ),
         ]
     )
     r["one_plap_w_reset"].extend(
         [
-            et.Element("curve", time="0", value="0.0"),
-            et.Element("curve", time="0.5", value="1.0"),
-            et.Element("curve", time="0.8", value="0.0"),
+            et.Element("curve", time="0", value="0.0", inTangent="0.0", outTangent="0.0"),
+            et.Element(
+                "curve", time="0.5", value="1.0", inTangent="0.0", outTangent="0.0"
+            ),
+            et.Element(
+                "curve", time="0.8", value="0.0", inTangent="0.0", outTangent="0.0"
+            ),
         ]
     )
     r["multi_plap_w_reset"].extend(
         [
-            et.Element("curve", time="0", value="0.0"),
-            et.Element("curve", time="0.25", value="1.0"),
-            et.Element("curve", time="0.5", value="0.0"),
-            et.Element("curve", time="0.75", value="1.0"),
-            et.Element("curve", time="0.90", value="0.0"),
+            et.Element("curve", time="0", value="0.0", inTangent="0.0", outTangent="0.0"),
+            et.Element(
+                "curve", time="0.25", value="1.0", inTangent="0.0", outTangent="0.0"
+            ),
+            et.Element(
+                "curve", time="0.5", value="0.0", inTangent="0.0", outTangent="0.0"
+            ),
+            et.Element(
+                "curve", time="0.75", value="1.0", inTangent="0.0", outTangent="0.0"
+            ),
+            et.Element(
+                "curve", time="0.90", value="0.0", inTangent="0.0", outTangent="0.0"
+            ),
         ]
     )
     return r
@@ -170,7 +194,7 @@ def test_get_keyframe_times_with_empty_keyframes(
     sections = plap_generator.make_sections(keyframes_sets["simple"])
     keyframe_times = plap_generator.get_plaps_from_keyframes(
         sections[0].reference, list(et.Element("keyframe"))
-    )[1]
+    )
     expected_times: List[float] = []
     assert keyframe_times == expected_times
 
@@ -192,7 +216,7 @@ def test_get_keyframe_times_with_empty_keyframes(
         (1.0, 1.0),
     ],
 )
-def test_simple(
+def test_simple_get_plaps_from_keyframes(
     min_pull_out, min_push_in, plap_generator: "PlapGenerator", keyframes_sets
 ):
     plap_generator.min_pull_out = min_pull_out
@@ -200,66 +224,43 @@ def test_simple(
     sections = plap_generator.make_sections(keyframes_sets["simple"])
     keyframe_times = plap_generator.get_plaps_from_keyframes(
         sections[0].reference, sections[0].keyframes
-    )[1]
+    )
     expected_times = [0.2, 0.6]
     assert keyframe_times == expected_times
 
 
 @pytest.mark.parametrize(
-    "set_name, expected",
+    "set_name, expected_times, expected_did_plap",
     [
-        ("basic", True),
-        ("one_plap_no_reset", True),
-        ("one_plap_w_reset", False),
-        ("multi_plap_w_reset", False),
+        ("basic_2frames", [], False),
+        ("one_plap_no_reset", [0.1], True),
+        ("one_plap_w_reset", [0.1], False),
+        ("multi_plap_w_reset", [0.05, 0.15], False),
     ],
 )
-def test_curve_mode_is_plap(
-    plap_generator: "PlapGenerator",
-    keyframes_sets,
-    set_name,
-    expected,
-    curve_keyframe_simple_sets,
-):
-    sections = plap_generator.make_sections(keyframes_sets["simple"])
-    did_plap = plap_generator.get_plaps_from_keyframes(
-        sections[0].reference,
-        list(curve_keyframe_simple_sets[set_name]),
-        curve_reference=keyframes_sets["simple"][0],
-    )[0]
-    assert did_plap == expected
-
-
-@pytest.mark.parametrize(
-    "set_name, expected_times",
-    [
-        ("basic", [0.2]),
-        ("one_plap_no_reset", [0.1]),
-        ("one_plap_w_reset", [0.1]),
-        ("multi_plap_w_reset", [0.05, 0.15]),
-    ],
-)
-def test_curve_mode(
+def test_get_plaps_from_curve_keyframes(
     plap_generator: "PlapGenerator",
     keyframes_sets,
     set_name,
     expected_times,
+    expected_did_plap,
     curve_keyframe_simple_sets,
 ):
     sections = plap_generator.make_sections(keyframes_sets["simple"])
-    keyframe_times = plap_generator.get_plaps_from_keyframes(
+    did_plap, curve_keyframe_times = plap_generator.get_plaps_from_curve_keyframes(
         sections[0].reference,
         list(curve_keyframe_simple_sets[set_name]),
         curve_reference=keyframes_sets["simple"][0],
-    )[1]
-    assert keyframe_times == expected_times
+    )
+    assert did_plap == expected_did_plap
+    assert curve_keyframe_times == expected_times
 
 
 def test_simple_w_curve(plap_generator: "PlapGenerator", keyframes_sets):
     sections = plap_generator.make_sections(keyframes_sets["simple_w_curve"])
     keyframe_times = plap_generator.get_plaps_from_keyframes(
         sections[0].reference, sections[0].keyframes
-    )[1]
+    )
     assert keyframe_times == [0.1, 0.2, 0.5, 0.6]
 
 
@@ -273,14 +274,14 @@ def test_simple_w_curve(plap_generator: "PlapGenerator", keyframes_sets):
         (0.0, [0.2, 0.6, 1.0, 1.4, 1.8]),
     ],
 )
-def test_under_push(
+def test_get_plaps_from_keyframes_under_push(
     plap_generator: "PlapGenerator", keyframes_sets, min_push_in, expected_times
 ):
     plap_generator.min_push_in = min_push_in
     sections = plap_generator.make_sections(keyframes_sets["under_push"])
     keyframe_times = plap_generator.get_plaps_from_keyframes(
         sections[0].reference, sections[0].keyframes
-    )[1]
+    )
     assert keyframe_times == expected_times
 
 
@@ -301,7 +302,7 @@ def test_under_push(
         (1.0, 1.0),
     ],
 )
-def test_over_push(
+def test_get_plaps_from_keyframes_over_push(
     plap_generator: "PlapGenerator", keyframes_sets, min_pull_out, min_push_in
 ):
     plap_generator.min_push_in = min_push_in
@@ -309,7 +310,7 @@ def test_over_push(
     sections = plap_generator.make_sections(keyframes_sets["over_push"])
     keyframe_times = plap_generator.get_plaps_from_keyframes(
         sections[0].reference, sections[0].keyframes
-    )[1]
+    )
     expected_times = [0.2, 0.6]
     assert keyframe_times == expected_times
 
@@ -324,7 +325,7 @@ def test_over_push(
         (0.0, [0.2, 0.35, 0.6, 1.0, 1.4, 1.8]),
     ],
 )
-def test_under_pull(
+def test_get_plaps_from_keyframes_under_pull(
     plap_generator: "PlapGenerator", keyframes_sets, min_pull_out, expected_times
 ):
     plap_generator.min_pull_out = min_pull_out
@@ -332,7 +333,7 @@ def test_under_pull(
     sections = plap_generator.make_sections(keyframes_sets["under_pull"])
     keyframe_times = plap_generator.get_plaps_from_keyframes(
         sections[0].reference, sections[0].keyframes
-    )[1]
+    )
     assert keyframe_times == expected_times
 
 
@@ -346,7 +347,7 @@ def test_under_pull(
         (0.8, 0.2),
     ],
 )
-def test_over_pull(
+def test_get_plaps_from_keyframes_over_pull(
     plap_generator: "PlapGenerator", keyframes_sets, min_pull_out, min_push_in
 ):
     plap_generator.min_pull_out = min_pull_out
@@ -354,6 +355,6 @@ def test_over_pull(
     sections = plap_generator.make_sections(keyframes_sets["over_pull"])
     keyframe_times = plap_generator.get_plaps_from_keyframes(
         sections[0].reference, sections[0].keyframes
-    )[1]
+    )
     expected_times = [0.2, 0.6, 1.0]
     assert keyframe_times == expected_times

@@ -29,7 +29,7 @@ def generate_plaps(groups: typing.List[GroupConfig]):
 
     names = {f"{sc.name}" for group in groups for sc in group.component_configs}
     log_print(
-        f"Generating xml for ({' '.join(names)})\n",
+        f"Generating xml for ({', '.join(names)})\n",
         output,
     )
 
