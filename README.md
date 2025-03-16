@@ -6,7 +6,9 @@ Unzip the archive wherever you like, but make sure `/configs`, `/resources`, `/b
 ### INTRO #####################################################################
 ___
 Author: AX-MMD
+
 Docs: https://github.com/AX-MMD/kk-plap-generator/tree/main?tab=readme-ov-file#intro
+
 Demonstration: Check the Koikatsu discord
 
 Koikatsu PLAP generator uses a Timeline interpolable as reference to generate keyframes for activable items and the Pregnancy+ plugin. It is meant to sync with a repetitive movement like forward-backward, up-down, etc.
