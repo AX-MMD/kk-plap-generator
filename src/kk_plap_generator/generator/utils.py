@@ -1,5 +1,5 @@
 import math
-from typing import List, cast
+from typing import Any, List, cast
 from xml.etree import ElementTree as et
 
 
@@ -21,6 +21,10 @@ class InfiniteIterator:
 
 def keyframe_get(keyframe: et.Element, key: str) -> float:
     return float(cast(str, keyframe.get(key)))
+
+
+def keyframe_set(keyframe: et.Element, key: str, value: Any):
+    keyframe.set(key, str(value))
 
 
 def convert_string_to_nested_list(s: str):

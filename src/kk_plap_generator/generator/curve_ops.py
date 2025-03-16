@@ -1,6 +1,9 @@
 # Generated with github copilot
 import math
-from typing import List, Tuple
+from typing import Iterable, List, Tuple
+from xml.etree import ElementTree as et
+
+from kk_plap_generator.generator.utils import keyframe_get
 
 
 def convert_tangent_to_slope(tangent):
@@ -17,7 +20,7 @@ def cubic_hermite_spline(t, p0, p1, m0, m1):
     return h00 * p0 + h10 * m0 + h01 * p1 + h11 * m1
 
 
-def evaluate_curve(
+def evaluate_curve_keyframes(
     curve_keyframes: List[Tuple[float, float, float, float]], num_points: int = 50
 ) -> Tuple[List[float], List[float]]:
     times = [kf[0] for kf in curve_keyframes]
@@ -44,3 +47,19 @@ def evaluate_curve(
         raise IndexError(f"{times} {values} {in_tangents} {out_tangents}")
 
     return evaluated_times, evaluated_values
+
+
+def evaluate_curve(
+    curve_keyframes: Iterable[et.Element],
+) -> Tuple[List[float], List[float]]:
+    return evaluate_curve_keyframes(
+        [
+            (
+                keyframe_get(ckf, "time"),
+                keyframe_get(ckf, "value"),
+                keyframe_get(ckf, "inTangent"),
+                keyframe_get(ckf, "outTangent"),
+            )
+            for ckf in list(curve_keyframes)
+        ]
+    )

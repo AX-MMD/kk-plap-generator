@@ -18,6 +18,7 @@ from kk_plap_generator.generator.utils import (
     convert_KKtime_to_seconds,
     convert_seconds_to_KKtime,
     keyframe_get,
+    keyframe_set,
 )
 from kk_plap_generator.generator.xml_node_finder import (
     NODE_NOT_FOUND,
@@ -353,17 +354,7 @@ class PlapGenerator:
         if not curve_keyframes:
             return did_plap, keyframe_times
 
-        evaluated_times, evaluated_values = evaluate_curve(
-            [
-                (
-                    keyframe_get(ckf, "time"),
-                    keyframe_get(ckf, "value"),
-                    keyframe_get(ckf, "inTangent"),
-                    keyframe_get(ckf, "outTangent"),
-                )
-                for ckf in curve_keyframes
-            ]
-        )
+        evaluated_times, evaluated_values = evaluate_curve(curve_keyframes)
 
         for i in range(0, len(evaluated_values) - 1):
             # We found a plap keyframe and are currently checking if at any point in the
@@ -434,9 +425,12 @@ class PlapGenerator:
                 else:
                     break  # We are done with the time range
 
-            reference = self.get_reference(kfs)
             if before_start_keyframe is not None:
                 kfs.insert(0, before_start_keyframe)
+            else:
+                kfs.insert(0, kfs[0])
+
+            reference = self.get_reference(kfs)
 
             sections.append(Section(reference, kfs))
 
@@ -456,14 +450,16 @@ class PlapGenerator:
 
     def get_reference(self, node_list: List[et.Element]) -> "KeyframeReference":
         # The first keyframe of a time range should be a keyframe where the two bodies collide.
-        reference = node_list[0]
+        reference = node_list[
+            1
+        ]  # Here it's second because we add the preceding frame for curve evaluation.
 
         # We check the next keyframe and calculate the difference between reference and next_keyframe.
         # The axis with the biggest difference will be our axis reference.
         # We also use the difference to determnine the direction of the pull out as 1 or -1.
         next_frame = None
         try:
-            next_frame = node_list[1]
+            next_frame = node_list[2]
         except IndexError:
             raise IndexError("The reference keyframe cannot be the last keyframe.")
 
@@ -481,18 +477,27 @@ class PlapGenerator:
             axis = "valueZ"
             out_direction = z / abs(z)
 
+        _, evaluated_values = evaluate_curve(list(node_list[0]))
+        ref_value = keyframe_get(reference, axis)
+        ref_value = max((ref_value, *(ref_value * v for v in evaluated_values)))
+        keyframe_set(reference, axis, self._round(ref_value))
+
         # We then try and estimate the pull out distance by taking the biggest difference
-        # between the reference keyframe and (up too) the next 5 keyframes.
-        estimated_pull_out = max(
-            abs(keyframe_get(node_list[j], axis) - keyframe_get(reference, axis))
-            for j in range(min(6, len(node_list)))
-        )
+        # between the reference keyframe and (up too) the next 5 keyframes, using the curve keyframes
+
+        # For each
+        estimated_pull_out = 0.0
+        for i in range(1, min(6, len(node_list) - 1)):
+            next_value = keyframe_get(node_list[i + 1], axis)
+            _, evaluated_values = evaluate_curve(list(node_list[i]))
+            value = max((next_value, *(next_value * v for v in evaluated_values)))
+            estimated_pull_out = max(estimated_pull_out, abs(value - ref_value))
 
         return KeyframeReference(
             reference,
             axis=axis,
             out_direction=out_direction,
-            estimated_pull_out=estimated_pull_out,
+            estimated_pull_out=self._round(estimated_pull_out),
         )
 
     def generate_patterns(self, count) -> Dict[str, List[int]]:
