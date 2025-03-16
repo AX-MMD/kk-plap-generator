@@ -76,6 +76,9 @@ class RefSwitcherWidget(PlapWidget):
             if len(self.app.plap_config) < 5:
                 default_entry = load_config_file(self.app.default_config_path)[0]
                 default_entry.ref_interpolable = self.app.store.ref_interpolable
+                default_entry.last_single_file_folder = (
+                    self.app.store.last_single_file_folder
+                )
                 self.app.plap_config.append(default_entry)
                 self.app.current_page = len(self.app.plap_config) - 1
                 self.create_plap_group_buttons()
@@ -99,6 +102,7 @@ class RefSwitcherWidget(PlapWidget):
     def reset_button_action(self):
         default_entry = load_config_file(self.app.default_config_path)[0]
         default_entry.ref_interpolable = self.app.store.ref_interpolable
+        default_entry.last_single_file_folder = self.app.store.last_single_file_folder
         self.app.store = default_entry
 
     def update(self):

@@ -1,0 +1,48 @@
+[[plap_group]]
+ref_interpolable = "GO Position (Hip MAIN)"
+ref_single_file = ""
+time_ranges = [ [ "00:00.00", "END",],]
+offset = 0.0
+min_pull_out = 0.2
+min_push_in = 0.8
+[[plap_group.component_configs]]
+name = "MAC"
+offset = 0.0
+type = "MultiActivableComponentConfig"
+cutoff = inf
+pattern = "V"
+[[plap_group.component_configs.item_configs]]
+name = "MAC-Item1"
+offset = 0.0
+type = "ActivableComponentConfig"
+cutoff = inf
+
+[[plap_group.component_configs.item_configs]]
+name = "MAC-Item2"
+offset = 0.0
+type = "ActivableComponentConfig"
+cutoff = inf
+
+[[plap_group.component_configs.item_configs]]
+name = "MAC-Item3"
+offset = 0.0
+type = "ActivableComponentConfig"
+cutoff = inf
+
+[[plap_group.component_configs.item_configs]]
+name = "MAC-Item4"
+offset = 0.0
+type = "ActivableComponentConfig"
+cutoff = inf
+
+
+[[plap_group.component_configs]]
+name = "Preg+"
+offset = 0.0
+type = "PregPlusComponentConfig"
+min_value = 0
+max_value = 45
+in_curve = "SameAsReference"
+out_curve = "SameAsReference"
+
+

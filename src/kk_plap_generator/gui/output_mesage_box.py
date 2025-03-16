@@ -10,10 +10,10 @@ class CustomMessageBox(tk.Toplevel):
         self.message_frame = tk.Frame(self)
         self.message_frame.pack(fill=tk.BOTH, expand=True)
 
-        self.text = tk.Text(self.message_frame, wrap=tk.WORD, height=20, width=70)
+        self.text = tk.Text(self.message_frame, wrap=tk.WORD)
         self.text.insert(tk.END, message)
         self.text.config(state=tk.DISABLED, padx=10, pady=10)
-        self.text.pack(side=tk.LEFT)
+        self.text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         self.scrollbar = tk.Scrollbar(self.message_frame, command=self.text.yview)
         self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -31,10 +31,12 @@ class CustomMessageBox(tk.Toplevel):
 
         self_width = max(self.winfo_width(), 600)
         self_height = max(self.winfo_height(), 400)
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        x = (screen_width // 2) - (self_width // 2)
-        y = (screen_height // 2) - (self_height // 2)
+        parent_x = parent.winfo_rootx()
+        parent_y = parent.winfo_rooty()
+        parent_width = parent.winfo_width()
+        parent_height = parent.winfo_height()
+        x = parent_x + (parent_width // 2) - (self_width // 2)
+        y = parent_y + (parent_height // 2) - (self_height // 2)
         self.geometry(f"{self_width}x{self_height}+{x}+{y}")
 
         self.update_idletasks()  # Ensure the geometry is updated

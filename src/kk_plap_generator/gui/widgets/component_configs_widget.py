@@ -46,7 +46,7 @@ class ComponentConfigsWidget(PlapWidget):
         self.components_label = tk.Label(self.top_left_frame, text="Components")
         self.components_label.pack()
 
-        info_message = info_text.SOUND_FOLDERS
+        info_message = info_text.COMPONENTS
         self.top_right_frame = InfoMessageFrame(self.top_frame, info_message)
 
         self.components_listbox = tk.Listbox(self.components_frame)

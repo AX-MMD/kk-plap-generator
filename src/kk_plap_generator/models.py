@@ -125,6 +125,7 @@ class GroupConfig:
         *,
         ref_interpolable: str = "",
         ref_single_file: str = "",
+        last_single_file_folder: str = "",
         time_ranges: List[Tuple[str, str]] = [("00:00.00", "END")],
         offset: float = 0.0,
         component_configs: List[dict] = [],
@@ -133,6 +134,7 @@ class GroupConfig:
     ):
         self.ref_interpolable: str = ref_interpolable
         self.ref_single_file: str = ref_single_file
+        self.last_single_file_folder: str = last_single_file_folder
         self.time_ranges: List[Tuple[str, str]] = time_ranges
         self.offset: float = offset
         self.component_configs: List[ComponentConfig] = [
@@ -152,6 +154,7 @@ class GroupConfig:
         return {
             "ref_interpolable": self.ref_interpolable,
             "ref_single_file": self.ref_single_file,
+            "last_single_file_folder": self.last_single_file_folder,
             "time_ranges": self.time_ranges,
             "offset": self.offset,
             "component_configs": [cc.to_toml_dict() for cc in self.component_configs],

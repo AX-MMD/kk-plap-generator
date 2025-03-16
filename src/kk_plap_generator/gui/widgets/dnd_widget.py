@@ -43,9 +43,13 @@ class DnDWidget(PlapWidget):
         self.update()
 
     def select_file(self):
-        file_path = filedialog.askopenfilename(parent=self.app.master)
+        initial_dir = self.app.store.last_single_file_folder or os.path.expanduser("~")
+        file_path = filedialog.askopenfilename(
+            parent=self.app.master, initialdir=initial_dir
+        )
         if file_path:
             self.app.store.ref_single_file = file_path
+            self.app.store.last_single_file_folder = os.path.dirname(file_path)
             self.update()
 
     def update(self):
