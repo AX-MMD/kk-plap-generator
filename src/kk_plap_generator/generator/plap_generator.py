@@ -450,9 +450,8 @@ class PlapGenerator:
 
     def get_reference(self, node_list: List[et.Element]) -> "KeyframeReference":
         # The first keyframe of a time range should be a keyframe where the two bodies collide.
-        reference = node_list[
-            1
-        ]  # Here it's second because we add the preceding frame for curve evaluation.
+        # Here it's second because we add the preceding frame for curve evaluation.
+        reference = node_list[1]  
 
         # We check the next keyframe and calculate the difference between reference and next_keyframe.
         # The axis with the biggest difference will be our axis reference.
@@ -470,28 +469,43 @@ class PlapGenerator:
         if abs(z) < abs(x) > abs(y):
             axis = "valueX"
             out_direction = x / abs(x)
+            value_diff = keyframe_get(reference, "valueX") - keyframe_get(next_frame, "valueX")
         elif abs(z) < abs(y) > abs(x):
             axis = "valueY"
             out_direction = y / abs(y)
+            value_diff = keyframe_get(reference, "valueY") - keyframe_get(next_frame, "valueY")
         else:
             axis = "valueZ"
             out_direction = z / abs(z)
+            value_diff = keyframe_get(reference, "valueZ") - keyframe_get(next_frame, "valueZ")
 
         _, evaluated_values = evaluate_curve(list(node_list[0]))
+        compare_func = min if out_direction == -1 else max
         ref_value = keyframe_get(reference, axis)
-        ref_value = max((ref_value, *(ref_value * v for v in evaluated_values)))
-        keyframe_set(reference, axis, self._round(ref_value))
-
+        ref_value = compare_func((ref_value, *(ref_value + value_diff * v for v in evaluated_values)))
+        
         # We then try and estimate the pull out distance by taking the biggest difference
         # between the reference keyframe and (up too) the next 5 keyframes, using the curve keyframes
 
-        # For each
         estimated_pull_out = 0.0
         for i in range(1, min(6, len(node_list) - 1)):
-            next_value = keyframe_get(node_list[i + 1], axis)
-            _, evaluated_values = evaluate_curve(list(node_list[i]))
-            value = max((next_value, *(next_value * v for v in evaluated_values)))
+            kf = node_list[i]
+            value = keyframe_get(kf, axis)
+            value_diff = keyframe_get(node_list[i + 1], axis) - value
+            value = compare_func((value, *(value + value_diff * v for v in evaluate_curve(list(node_list[i]))[1])))
             estimated_pull_out = max(estimated_pull_out, abs(value - ref_value))
+            
+
+        if estimated_pull_out == 0.0:
+            raise ValueError(
+                "Could not estimate the pull out distance with available data"
+                + f"\n> node_list length: {len(node_list)}"
+                + f"\n> axis: {axis}"
+                + f"\n> ref_value: {ref_value}"
+                + f"\n> original ref_value: {keyframe_get(reference, axis)}"
+                )
+        
+        keyframe_set(reference, axis, self._round(ref_value))
 
         return KeyframeReference(
             reference,
