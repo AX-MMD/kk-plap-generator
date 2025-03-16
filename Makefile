@@ -27,8 +27,18 @@ run:
 	python $(src_path)/run_gui.py
 
 .PHONY: bin
-test:
+bin:
 	pyinstaller run_gui.spec 
+	mv -f ./dist/run_gui.exe $(src_path)/bin/KoikatsuPlapGenerator.exe
+
+.PHONY: release
+release:
+	ruff check
+	$(mypylint)
+	pytest $(project_path)
+	pyinstaller run_gui.spec
+	mv -f ./dist/run_gui.exe $(src_path)/bin/KoikatsuPlapGenerator.exe
+	python $(src_path)/make_release.py
 
 .PHONY: all
 

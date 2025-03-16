@@ -11,6 +11,7 @@ IF /I "%1"=="lint" GOTO lint
 IF /I "%1"=="test" GOTO test
 IF /I "%1"=="bin" GOTO bin
 IF /I "%1"=="run" GOTO run
+IF /I "%1"=="release" GOTO release
 GOTO error
 
 :.DEFAULT_GOAL 
@@ -43,6 +44,16 @@ GOTO error
 
 :bin
 	pyinstaller run_gui.spec
+	move /Y dist\run_gui.exe %src_path%\bin\KoikatsuPlapGenerator.exe
+	GOTO :EOF
+
+:release
+	ruff check
+	%mypylint%
+	pytest %project_path%
+	pyinstaller run_gui.spec
+	move /Y dist\run_gui.exe %src_path%\bin\KoikatsuPlapGenerator.exe
+	python %src_path%/make_release.py
 	GOTO :EOF
 
 :error
