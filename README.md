@@ -7,31 +7,31 @@ Unzip the archive wherever you like, but make sure `/configs`, `/resources`, `/b
 ___
 Author: AX-MMD
 Docs: https://github.com/AX-MMD/kk-plap-generator/tree/main?tab=readme-ov-file#intro
+Demonstration: Check the Koikatsu discord
 
-Koikatsu PLAP generator uses a Timeline interpolable as reference to generate keyframes for activable item and the Pregnancy+ pluggin. It is meant to sync with a repetitive movement like forward-backward, up-down, etc.
+Koikatsu PLAP generator uses a Timeline interpolable as reference to generate keyframes for activable items and the Pregnancy+ plugin. It is meant to sync with a repetitive movement like forward-backward, up-down, etc.
 
 The process is as follows:
 - Export the Timeline Single File of your reference
 - Configure PLAP generator
 - Generate your PLAP files
-- Setup your scene (import `/resources/Plap1234.png` for an exemple with sound items)
+- Setup your scene (import `/resources/Plap1234.png` for an example with sound items)
 - Import the generated PLAP files to Timeline
 
 ### EXPORT TIMELINE SINGLE FILE ###############################################
 ___
 > In CharaStudio
-* Choose an interpolable like "GO Pos Waist", Hips, Dick, etc. Rotation is fine too.
+* Choose an interpolable like "GO Pos Waist", Hips, Dick, pshere/folder, etc. Rotation is fine too.
 * Rename it with an alias, can also just Rename -> ctrl+X -> ctrl+V.
-* Make sure the owner of that interpolable is selected (green) in your Workspace.
 * Timeline -> Single Files -> Save.
 
 > In PLAP generator
-* (Optionnal) Click Load and select "example.toml" to use a default config.
+* (Optional) Click `Load` and select "example.toml" to use a default config.
 * Drop the exported file into the file drop zone or use the `Select File` button.
 
 ### CONFIGURATION #############################################################
 ___
-Two required info for generation are the Name/alias of the chosen reference interpolable and the Time of a reference keyframe for that interpolable.
+The required info for generation is the Name/alias of the chosen reference interpolable and the Time of a reference keyframe for that interpolable.
 
 > In CharaStudio
 * Choose a keyframe where the interpolable is fully extended:
@@ -41,12 +41,12 @@ Two required info for generation are the Name/alias of the chosen reference inte
 * Copy the exact Name of that interpolable.
 * Copy the exact Time of that keyframe.
 
-NOTE: If the apex is in between 2 keyframe, always take the keyframe on the right.
+NOTE: If the apex is in between 2 keyframes, always take the keyframe on the right.
 
 > In PLAP generator
 * The generator needs the Name and Start Time of the interpolable to use as reference.
 
-    Exemple:
+    Example:
 
     Your interpolable "Pos Waist" is part of a group(s), and the reference keyframe is at 00:02.454
      __________
@@ -60,24 +60,24 @@ NOTE: If the apex is in between 2 keyframe, always take the keyframe on the righ
     In "Reference Interpolable" tab: 
       Path => Pos Waist
 
-    In "Time Ranges" tab:
+    In the "Time Ranges" tab:
       Double click "00:00.0 - END" and change it to "<reference_time_here> - END" 
 
-If the generator has trouble finding the reference keyframe try giving the full path, "Main.male.Pos Waist" for this exemple. You can check the TROUBLESHOOTING section for more help.
+If the generator has trouble finding the reference keyframe try giving the full path, "Main.male.Pos Waist" for this example. Check the TROUBLESHOOTING section for more help.
 
 
 Once that is done, if you didn't load the example config we need to configure Components. The 2 main components are MultiActivableComponent (MAC, usually for Studio sound items) and PregPlusComponent (Preg+).
 
-Let say you have 4 sound items in your scene:
+Let's say you have 4 sound items in your scene:
 * In Components, click "+" to add a MAC component then add MAC-Items until you have 4 (the amount of sound items).
 * Adjust the offsets as needed to account for sound delays of the items.
 * Make sure you don't have multiple components with the same name.
 * Click Ok.
 
-Let say you want a stomach bulge:
+Let's say you want a stomach bulge:
 * click "+" to add a PregPlus component.
 * Default values are fine, but you can tweak the min/max bulge size.
-* The "Curve" options are the same curves as in Timeline, "SameAsReference" will copy whatever curves your chosen reference uses on each keyframes.
+* The "Curve" options are the same curves as in Timeline, "SameAsReference" will copy whatever curves your chosen reference uses on each keyframe.
 
 [-- Advanced use case ------------------------------------------------------]
 
@@ -86,15 +86,15 @@ You can click the ` ℹ ` icons for a full explanation of the parameters availab
 * Use multiple reference interpolables using pages in the `Reference Interpolable` (For multiple actors/pairs).
 * Use multiple time ranges if actors change location during the scene, a new time range will refresh the reference.
 * A different keyframe generation pattern for activable Studio items.
-* Add a `cutoff` to `Activable` or `MultiActivable` Components` if you want to use a "loop" items.
-* Offset the time of the keyframe (ex. audio items have some delay, so can compansate with offset).
+* Add a `cutoff` to `Activable` or `MultiActivable` Components` if you want to use a "loop" item.
+* Offset the time of the keyframe (ex. audio items have some delay, so can compensate with offset).
 * Adjust the margin of error accepted to register a keyframe.
 
 [---------------------------------------------------------------------------]
 
 ### GENERATE THE PLAP FILES ###################################################
 ___
-Once your have exported your Single File and configured the generator, press the `▶` Play button. The program will generate a file for each component (`Preg+`) or each component items (`MAC`). They will be created to whatever location your exported Single File is coming from.
+Once you have exported your Single File and configured the generator, press the `▶` Play button. The program will generate a file for each component (`Preg+`) or each component item (`MAC`). They will be created at whatever location your exported Single File is coming from.
 
 The output should be something like this:
 
@@ -126,14 +126,14 @@ With the Plap.xml files generated, it's time to setup your scene. You can just i
 ___
 > In CharaStudio
 
-(If you already have interpolables in Timeline for your activable components, delete them)
+(Delete any interpolables with keyframes in Timeline for the activable components you want to import)
 
-For each of your activable Studio item in your scene:
+For each of your activable Studio items in your scene:
 * Click the folder to highlight it.
 * In Timeline -> Single Files, load 1 of the MAC-Item.
-* Repeat to link each Mac-Item to one of you activable Studio items, 1 Studio item per MAC-Item.
+* Repeat to link each Mac-Item to one of your activable Studio items, 1 Studio item per MAC-Item.
 
-And voilà, a simple sequence of sound keyframes is added to your scene. By default it should make a serie of repetitive "V" shapes
+And voilà, a simple sequence of sound keyframes is added to your scene. By default, it should make a series of repetitive "V" shapes
 
 ### LIMITATIONS ###############################################################
 ___
@@ -141,7 +141,7 @@ The reference can be lost if the subject of that interpolable:
  * (A) Increase/decrease his movement by a lot.
  * (B) Moves away from his point of origin.
 
- Case (A) can usually be fiexd by tweaking Min Pull Out % amd Min Push In %.
+ Case (A) can usually be fixed by tweaking the Min Pull Out % and Min Push In %.
  Case (B) you can set your `Time Range` to end right where the actor moves location and add a second or more `Time Ranges` with a start time corresponding to the next keyframe of reference for your chosen interpolable.
 
 ### TROUBLESHOOTING ###########################################################
@@ -150,11 +150,11 @@ ___
 Could not find the reference keyframe at ...
 * Make sure you gave the correct time for the reference keyframe.
 
-There are keyframes for only a part of the scene, then it stop :
-* Most likely the subject moved from his position to much, you can try tweaking Min Pull Out and/or Min Push In. You can also define a second (or more) `Time Ranges` starting at a new reference keyframe (where your actor settled in his new location).
+There are keyframes for only a part of the scene, and then it stops:
+* Most likely the subject moved from his position too much, you can try tweaking Min Pull Out and/or Min Push In. You can also define a second (or more) `Time Ranges` starting at a new reference keyframe (where your actor settled in his new location).
 
-There is a spam of sound keyframes at one point of the scene :
-* This can happen when the subject makes micro in-out moves near the contact point, you can try increasing Min Pull Out and/or Min Push In.
+There is a spam of sound keyframes at one point in the scene :
+* This can happen when the subject makes micro-in-out moves near the contact point, you can try increasing Min Pull Out and/or Min Push In.
 
 Missing node: `<interpolableGroup name='xxx'>`
 * The path you gave for the reference interpolable contains a parent group that is not recognized, make sure the path is correct.
@@ -165,4 +165,4 @@ Missing node: `<interpolable alias='xxx'>`
 * Modded CharaStudio has auto-translates, look at your Timeline and press Alt+T to see the real names of the groups and interpolables.
 
 Could not find the ... file
-* Koikatsu PLAP generator cannot access `/configs` and `/resources`, or `config.toml` and `template.xml` that is supposed to be in these folders. Re-install the program.
+* Koikatsu PLAP generator cannot access `/configs` and `/resources`, or `config.toml` and `template.xml` that are supposed to be in these folders. Re-install the program.
