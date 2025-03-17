@@ -49,8 +49,9 @@ NOTE: If the apex is in between 2 keyframes, always take the keyframe on the rig
 * The generator needs the Name and Start Time of the interpolable to use as reference.
 
     Example:
-
+    
     Your interpolable "Pos Waist" is part of a group(s), and the reference keyframe is at 00:02.454
+    ```
      __________
     |  Main    |
     ------------
@@ -58,14 +59,14 @@ NOTE: If the apex is in between 2 keyframes, always take the keyframe on the rig
     ------------      ⇓
      |Pos Waist|    ◆◆◆ ◆◆◆ ◆◆◆       ◆◆ ◆◆ ◆◆◆◆◆◆
       ---------
-
+    ```
     In "Reference Interpolable" tab: 
-      Path => Pos Waist
-
+    * Path => Pos Waist
+    
     In the "Time Ranges" tab:
-      Double click "00:00.0 - END" and change it to "<reference_time_here> - END" 
+    * Double click "00:00.0 - END" and change it to "<reference_time_here> - END" 
 
-If the generator has trouble finding the reference keyframe try giving the full path, "Main.male.Pos Waist" for this example. Check the TROUBLESHOOTING section for more help.
+    If the generator has trouble finding the reference keyframe try giving the full path, "Main.male.Pos Waist" for this example. Check the TROUBLESHOOTING section for more help.
 
 
 Once that is done, if you didn't load the example config we need to configure Components. The 2 main components are MultiActivableComponent (MAC, usually for Studio sound items) and PregPlusComponent (Preg+).
