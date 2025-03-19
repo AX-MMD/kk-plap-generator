@@ -15,8 +15,8 @@ The process is as follows:
 - Export the Timeline Single File of your reference
 - Configure PLAP generator
 - Generate your PLAP files
-- Setup your scene (import `/resources/Plap1234.png` for an example with sound items)
-- Import the generated PLAP files to Timeline
+- Add activable items to your scene (import `/resources/Plap1234.png` for an example with sound items)
+- Import each generated PLAP files to each of your items in Timeline 
 
 ### EXPORT TIMELINE SINGLE FILE ###############################################
 ___
