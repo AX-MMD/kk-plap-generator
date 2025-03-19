@@ -5,7 +5,7 @@ class CustomMessageBox(tk.Toplevel):
     def __init__(self, parent, title, message):
         super().__init__(parent)
         self.title(title)
-        self.geometry("600x400")  # Set the initial size of the message box
+        self.geometry("660x400")  # Set the initial size of the message box
 
         self.message_frame = tk.Frame(self)
         self.message_frame.pack(fill=tk.BOTH, expand=True)
@@ -29,7 +29,7 @@ class CustomMessageBox(tk.Toplevel):
         # Center the dialog on the screen
         self.update_idletasks()
 
-        self_width = max(self.winfo_width(), 600)
+        self_width = max(self.winfo_width(), 660)
         self_height = max(self.winfo_height(), 400)
         parent_x = parent.winfo_rootx()
         parent_y = parent.winfo_rooty()

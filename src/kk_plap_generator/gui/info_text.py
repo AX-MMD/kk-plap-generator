@@ -1,5 +1,3 @@
-# ruff:ignore
-
 README = """
 ### INTRO #####################################################################
 ___
@@ -13,8 +11,8 @@ The process is as follows:
 - Export the Timeline Single File of your reference
 - Configure PLAP generator
 - Generate your PLAP files
-- Setup your scene (import `/resources/Plap1234.png` for an example with sound items)
-- Import the generated PLAP files to Timeline
+- Add activable items to your scene (import `/resources/Plap1234.png` for an example with sound items)
+- Import each generated PLAP files to each of your items in Timeline 
 
 ### EXPORT TIMELINE SINGLE FILE ###############################################
 ___
@@ -168,7 +166,7 @@ Could not find the ... file
 """
 
 CORRECTIONS = """
-[---------------------------- Adjustments ---------------------------]
+[-------------------------------- Adjustments --------------------------------]
 
 These settings are used for corrections. You can change them if the plaps are not synced with the reference, there is to much plaps, or not enough plaps.
 
@@ -189,7 +187,7 @@ Setting an offset on individual components is preferred, but you can use this fo
 """
 
 COMPONENTS = """
-[--------------------------- Components --------------------------]
+[--------------------------------- Components --------------------------------]
 
 Here you define your components according to what you will use in your scene in Charastudio.
 
@@ -229,7 +227,7 @@ You can combine multiple letters to create a more complex pattern or you can loa
 
 
 TIME_RANGES = """
-[---------------------------- Time Ranges ---------------------------]
+[-------------------------------- Time Ranges --------------------------------]
 
 A Time Range should start where your chosen reference keyframe is. 
 Select a keyframe where the reference is fully extended, for example when the dick is fully inserted.
