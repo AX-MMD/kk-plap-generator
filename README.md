@@ -1,6 +1,6 @@
 ### INSTALLATION ##############################################################
 ___
-Unzip the archive wherever you like, but make sure `/configs`, `/resources`, `/bin` and their content stays together.
+Unzip the archive wherever you like, but make sure `/configs`, `/resources`, and their content stays together.
 
 
 ### INTRO #####################################################################
