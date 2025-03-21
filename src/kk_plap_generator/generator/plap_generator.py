@@ -1,4 +1,5 @@
 import copy
+import itertools
 import math
 import os
 from typing import (
@@ -12,7 +13,12 @@ from xml.etree import ElementTree as et
 
 from kk_plap_generator import settings
 from kk_plap_generator.generator.curve_ops import evaluate_curve
-from kk_plap_generator.generator.models import KeyframeReference, Section
+from kk_plap_generator.generator.models import (
+    KeyframeReference,
+    PlapAxis,
+    PlapFrame,
+    Section,
+)
 from kk_plap_generator.generator.utils import (
     InfiniteIterator,
     convert_KKtime_to_seconds,
@@ -257,40 +263,51 @@ class PlapGenerator:
                 section.reference, section.keyframes
             )
 
-        # Create the interpolables
-        interpolables: List[et.Element] = []
         item_configs: List[ActivableComponentConfig] = (
             ac.item_configs if isinstance(ac, MultiActivableComponentConfig) else [ac]
         )
+        keyframes_groups: List[List[et.Element]] = [[] for _ in range(len(item_configs))]
         offset = self.offset + ac.offset
-        cutoff = ac.cutoff
-
-        for i, ic in enumerate(item_configs):
-            plap: et.Element = copy.deepcopy(base_sfx)
-            plap.set("alias", f"{ic.name}")
-            plap.set("objectIndex", f"{plap.get('objectIndex')}{i + 1}")
-            interpolables.append(plap)
 
         # Generate the keyframes
-        pattern_iter = InfiniteIterator(sequence)
-        for time in keyframe_times:
-            i = next(pattern_iter)
-            plap = interpolables[i]
+        for i, time in zip(InfiniteIterator(sequence), keyframe_times):
+            plaps = keyframes_groups[i]
             pc = item_configs[i]
+            time_actual = time + offset + pc.offset
+            # Remove overlapping keyframes
+            for prev_index in range(len(plaps) - 1, -1, -1):
+                if keyframe_get(plaps[prev_index], "time") >= time_actual - 0.05:
+                    plaps.pop(prev_index)
+
             mute_keyframe = copy.deepcopy(sfx_keyframe)
-            mute_keyframe.set("time", str(time - 0.1 + offset + pc.offset))
+            mute_keyframe.set("time", str(time_actual - 0.05))
             mute_keyframe.set("value", "false")
-            plap.append(mute_keyframe)
             new_keyframe = copy.deepcopy(sfx_keyframe)
-            new_keyframe.set("time", str(time + offset + pc.offset))
+            new_keyframe.set("time", str(time_actual))
             new_keyframe.set("value", "true")
-            plap.append(new_keyframe)
-            cutoff = pc.cutoff + cutoff if cutoff < math.inf else pc.cutoff
-            if cutoff < math.inf:
+
+            plaps.append(mute_keyframe)
+            plaps.append(new_keyframe)
+
+            if 0 < ac.cutoff < math.inf:
+                cutoff = (ac.cutoff + pc.cutoff) if pc.cutoff < math.inf else ac.cutoff
+            else:
+                cutoff = pc.cutoff
+
+            if 0 < cutoff < math.inf:
                 cutoff_keyframe = copy.deepcopy(sfx_keyframe)
                 cutoff_keyframe.set("time", str(time + offset + pc.offset + cutoff))
                 cutoff_keyframe.set("value", "false")
-                plap.append(cutoff_keyframe)
+                plaps.append(cutoff_keyframe)
+
+        # Create the interpolables
+        interpolables: List[et.Element] = []
+        for i, ic in enumerate(item_configs):
+            p: et.Element = copy.deepcopy(base_sfx)
+            p.set("alias", f"{ic.name}")
+            p.set("objectIndex", f"{p.get('objectIndex')}{i + 1}")
+            p.extend(keyframes_groups[i])
+            interpolables.append(p)
 
         return PlapGenerator.GeneratorResult(
             interpolables,
@@ -314,31 +331,18 @@ class PlapGenerator:
         # (ex. out direction -1) impact at X:0.0, pulling away to X:-1.0
         # (ex. out direction 1) impact at X:-2.0, pulling away to X:7.0
         # (ex. out direction -1) impact at X:-2.0, pulling away to X:-9.0
-        prev_keyframe: et.Element = et.Element("base")
 
-        for keyframe in keyframes:
-            value = keyframe_get(keyframe, reference.axis)
-            will_plap = self.evaluate_is_plap(reference, value, did_plap)
-            if did_plap and not will_plap:
-                did_plap = False
-            elif not did_plap and will_plap:
-                did_plap, curve_keyframe_times = self.get_plaps_from_curve_keyframes(
-                    KeyframeReference(
-                        keyframe,
-                        axis=reference.axis,
-                        out_direction=reference.out_direction,
-                        estimated_pull_out=reference.estimated_pull_out,
-                    ),
-                    list(prev_keyframe),
-                    curve_reference=prev_keyframe,
-                )
-                keyframe_times += curve_keyframe_times
-
-                if not did_plap:
-                    keyframe_times.append(keyframe_get(keyframe, "time"))
+        for keyframe, next_kf in zip(keyframes, itertools.islice(keyframes, 1, None)):
+            plapframes = self._convert_to_plapframes(
+                [keyframe, next_kf], PlapAxis(reference.axis)
+            )
+            for plapframe in plapframes:
+                will_plap = self.evaluate_is_plap(reference, plapframe.value, did_plap)
+                if did_plap and not will_plap:
+                    did_plap = False
+                elif not did_plap and will_plap:
+                    keyframe_times.append(plapframe.time)
                     did_plap = True
-
-            prev_keyframe = keyframe
 
         return keyframe_times
 
@@ -440,11 +444,10 @@ class PlapGenerator:
         last_index = len(pattern_string) - 1
         pattern = self.generate_patterns(count)
         sequence = []
-        for p, char in enumerate(pattern_string):
-            pattern_chunk = pattern[char]
-            sequence += pattern_chunk
-            if p != last_index:
-                sequence.append(pattern_chunk[0])
+        for i, char in enumerate(pattern_string):
+            sequence += pattern[char]
+            if i != last_index and pattern_string[i + 1] != char:
+                sequence.append(pattern[char][0])
 
         return sequence
 
@@ -488,9 +491,9 @@ class PlapGenerator:
         _, evaluated_values = evaluate_curve(list(node_list[0]))
         compare_func = min if out_direction == -1 else max
         ref_value = keyframe_get(reference, axis)
-        ref_value = compare_func(
-            (ref_value, *(ref_value + value_diff * v for v in evaluated_values))
-        )
+        # ref_value = compare_func(
+        #     (ref_value, *(ref_value + value_diff * v for v in evaluated_values))
+        # )
 
         # We then try and estimate the pull out distance by taking the biggest difference
         # between the reference keyframe and (up too) the next 5 keyframes, using the curve keyframes
@@ -519,6 +522,14 @@ class PlapGenerator:
                 + f"\n> ref_value: {ref_value}"
                 + f"\n> original ref_value: {keyframe_get(reference, axis)}"
             )
+        elif settings.IS_DEV:
+            print(
+                f"Estimated pull out distance for {axis} at {keyframe_get(reference, 'time')}: {estimated_pull_out}"
+                + f"\n> ref_value: {ref_value}"
+                + f"\n> original ref_value: {keyframe_get(reference, axis)}"
+                + f"\n> out_direction: {out_direction}"
+                + f"\n> axis: {axis}"
+            )
 
         keyframe_set(reference, axis, self._round(ref_value))
 
@@ -533,12 +544,12 @@ class PlapGenerator:
         # fmt: off
         return {
             "W": [i for i in range(count)] \
-                + [i for i in range(count - 2, int(math.ceil(count / 2)) - 1, -1)] \
-                + [i for i in range(int(math.ceil(count / 2)) - 1, count - 1)] \
+                + [i for i in range(count - 2, int(math.ceil(count / 2.0)) - 1, -1)] \
+                + [i for i in range(int(math.ceil(count / 2.0)) - 1, count - 1)] \
                 + [i for i in range(count - 1, 0, -1)],
             "M": [i for i in range(count - 1, -1, -1)] \
-                + [i for i in range(1, int(math.ceil(count / 2)) + 1)] \
-                + [i for i in range(int(math.ceil(count / 2)) - 1, 0, -1)] \
+                + [i for i in range(1, int(math.ceil(count / 2.0)) + 1)] \
+                + [i for i in range(int(math.ceil(count / 2.0)) - 1, 0, -1)] \
                 + [i for i in range(count - 1)],
             "V": [i for i in range(count)] + [i for i in range(count - 2, 0, -1)],
             "A": [i for i in range(count - 1, 0, -1)] + [i for i in range(count - 1)],
@@ -610,3 +621,55 @@ class PlapGenerator:
 
     def _std_time(self, time: Union[str, int, float]) -> float:
         return self._truncate(float(time))
+
+    def _convert_to_plapframes(
+        self, keyframes: List[et.Element], shared_axis: PlapAxis
+    ) -> List[PlapFrame]:
+        plapframes: List[PlapFrame] = []
+        for keyframe, next_keyframe in zip(keyframes, keyframes[1:]):
+            frame_left = PlapFrame(
+                keyframe_get(keyframe, "time"),
+                keyframe_get(keyframe, "valueX"),
+                keyframe_get(keyframe, "valueY"),
+                keyframe_get(keyframe, "valueZ"),
+                shared_axis,
+            )
+            frame_right = PlapFrame(
+                keyframe_get(next_keyframe, "time"),
+                keyframe_get(next_keyframe, "valueX"),
+                keyframe_get(next_keyframe, "valueY"),
+                keyframe_get(next_keyframe, "valueZ"),
+                shared_axis,
+            )
+            plapframes.append(frame_left)
+
+            for c_time, c_value in zip(*evaluate_curve(list(keyframe))):
+                # print(
+                #     f"T: {c_time} V: {c_value} Left: {frame_left.time} Right: {frame_right.time} LV: {frame_left.valueY} RV: {frame_right.valueY}"
+                # )
+                # print(
+                #     frame_left.valueY + (frame_right.valueY - frame_left.valueY) * c_value
+                # )
+                plapframes.append(
+                    PlapFrame(
+                        self._round(
+                            frame_left.time
+                            + c_time * (frame_right.time - frame_left.time)
+                        ),
+                        self._round(
+                            frame_left.valueX
+                            + (frame_right.valueX - frame_left.valueX) * c_value
+                        ),
+                        self._round(
+                            frame_left.valueY
+                            + (frame_right.valueY - frame_left.valueY) * c_value
+                        ),
+                        self._round(
+                            frame_left.valueZ
+                            + (frame_right.valueZ - frame_left.valueZ) * c_value
+                        ),
+                        shared_axis,
+                    )
+                )
+
+        return plapframes

@@ -66,6 +66,7 @@ class RefSwitcherWidget(PlapWidget):
         add_button.pack(side=tk.RIGHT, padx=(0, 0))
 
     def update_current_page(self, page_number):
+        self.app.widgets_save()
         self.app.current_page = page_number
         self.create_plap_group_buttons()
         self.app.update_widgets()

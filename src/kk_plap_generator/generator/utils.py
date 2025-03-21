@@ -8,6 +8,12 @@ class InfiniteIterator:
         self.data: List[int] = data
         self.index: int = 0
 
+    def preview_next(self) -> int:
+        if not self.data:
+            raise StopIteration("The data list is empty.")
+
+        return self.data[(self.index + 1) % len(self.data)]
+
     def __iter__(self):
         return self
 
@@ -20,7 +26,7 @@ class InfiniteIterator:
 
 
 def keyframe_get(keyframe: et.Element, key: str) -> float:
-    return float(cast(str, keyframe.get(key)))
+    return round(float(cast(str, keyframe.get(key))), 5)
 
 
 def keyframe_set(keyframe: et.Element, key: str, value: Any):

@@ -1,6 +1,0 @@
-[[plap_group]]
-ref_interpolable = "GO Position (Hip o)"
-offset = 0.0
-min_pull_out = 0.2
-min_push_in = 0.8
-time_ranges = [["00:00.00", "END"]]

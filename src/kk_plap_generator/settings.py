@@ -9,9 +9,11 @@ if getattr(sys, "frozen", False):
         WORKDIR = os.path.dirname(os.path.dirname(sys.executable))
     else:
         WORKDIR = os.path.dirname(sys.executable)
+    IS_DEV = False
 else:
     # If the application is run as a script, use the directory of the script.
     WORKDIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
+    IS_DEV = True
 
 PACKAGE_DIR = os.path.join(WORKDIR, "kk_plap_generator")
 CONFIG_FOLDER = os.path.join(WORKDIR, "configs")

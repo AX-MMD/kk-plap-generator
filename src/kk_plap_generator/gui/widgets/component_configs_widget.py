@@ -218,6 +218,9 @@ class ComponentConfigDialog(simpledialog.Dialog):
                 self.component_config.name = "MAC"
 
             def name_entry_change(event):
+                if not self.name_entry.get():
+                    return
+
                 old_name = self.component_config.name
                 self.component_config.name = self.name_entry.get()
                 for name_entry, _, _, _ in self.item_entries:
