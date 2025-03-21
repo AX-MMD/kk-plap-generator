@@ -87,7 +87,6 @@ class TimeRangesWidget(PlapWidget):
                 "Validation Error", "Invalid time format. Expected MM:SS.SS"
             )
 
-
     def remove_selected_time_range(self):
         selected_index = self.time_ranges_listbox.curselection()
         if selected_index:
@@ -163,8 +162,7 @@ class TimeRangeDialog(simpledialog.Dialog):
         return (
             not self.is_cancelled
             and validate_time(self.start_time)
-            and (self.stop_time == "END"
-            or validate_time(self.stop_time))
+            and (self.stop_time == "END" or validate_time(self.stop_time))
         )
 
     def apply(self):

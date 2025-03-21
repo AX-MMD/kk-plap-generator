@@ -201,7 +201,9 @@ class PlapUI(tk.Frame):
             self.save_config(path)
             # check that the file was created
             if os.path.isfile(path):
-                messagebox.showinfo("Success", f"Config file exported successfully to {path}.")
+                messagebox.showinfo(
+                    "Success", f"Config file exported successfully to {path}."
+                )
             else:
                 messagebox.showerror("Error", f"Failed to export config file at {path}.")
 

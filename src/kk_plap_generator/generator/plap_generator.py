@@ -220,15 +220,13 @@ class PlapGenerator:
                     if keyframe_get(plaps[prev_index], "time") >= time_actual:
                         plaps.pop(prev_index)
                     else:
-                        break 
+                        break
 
                 new_keyframe = (
                     copy.deepcopy(out_keyframe) if is_plap else copy.deepcopy(in_keyframe)
                 )
 
-                new_keyframe.set(
-                    "time", str(time_actual)
-                )
+                new_keyframe.set("time", str(time_actual))
                 new_keyframe.set("value", str(preg_value))
 
                 if len(list(new_keyframe)) == 0:
@@ -476,7 +474,9 @@ class PlapGenerator:
         try:
             next_frame = node_list[2]
         except IndexError:
-            raise IndexError("The reference keyframe cannot be the last or only keyframe in the Time Range.")
+            raise IndexError(
+                "The reference keyframe cannot be the last or only keyframe in the Time Range."
+            )
 
         x = keyframe_get(next_frame, "valueX") - keyframe_get(reference, "valueX")
         y = keyframe_get(next_frame, "valueY") - keyframe_get(reference, "valueY")
