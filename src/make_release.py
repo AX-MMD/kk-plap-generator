@@ -28,8 +28,8 @@ def create_release_zip(version):
         # Add /resource and its content
         zip_directory(zipf, join_path(SRC_PATH, 'resources'), 'resources')
 
-        # Add /configs/__app__ and its content
-        zip_directory(zipf, join_path(SRC_PATH, 'configs', '__app__'), 'configs/__app__')
+        # Add reference config
+        zipf.write(join_path(SRC_PATH, 'configs', '__app__', 'reference.toml'), 'configs/__app__/reference.toml')
 
         # Add /configs/example.toml
         zipf.write(join_path(SRC_PATH, 'configs', 'example.toml'), 'configs/example.toml')

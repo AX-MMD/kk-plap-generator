@@ -194,12 +194,14 @@ Here you define your components according to what you will use in your scene in 
 Click "+" or "-" to add or remove a Component
 Double-click on a Componennt to edit its parameters
 
+If two components have the same name, the generator will try to combine them as one.
+
 : MAC (MultiActivableComponent) :
 
--- Name: Must be unique for each page.
+-- Name: Components with the ssame name will be combined if possible.
 -- Offset: An offset in seconds for the generated keyframes, can be positive or negative.
 -- Cutoff: You can use this to define a delay after which the Studio item will be disabled, usefull if you want to use "loop" sound items.
--- Items: 1 Timeline Single File will be generated for each Item, so each name must be unique.
+-- Items: 1 Timeline Single File will be generated for each Item.
 -- Pattern:
 A MAC component will generate a sequence of keyframes for each MAC-Items. The pattern is what determines the order of activation of your Studio items.
 For example, if you have a MAC with 4 items, named MAC-Item 1-4, and your pattern is "W", the generated keyframes for Timeline will look like this:

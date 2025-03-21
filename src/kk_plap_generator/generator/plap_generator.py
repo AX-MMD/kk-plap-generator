@@ -191,6 +191,7 @@ class PlapGenerator:
         for section in sections:
             reference = section.reference
             is_plap = True
+            plaps: List[et.Element] = []
 
             for keyframe in section.keyframes:
                 value = keyframe_get(keyframe, reference.axis)
@@ -213,12 +214,20 @@ class PlapGenerator:
                     preg_value = max(preg_value, pc.min_value)
                     is_plap = self.evaluate_is_plap(reference, value, is_plap)
 
+                time_actual = keyframe_get(keyframe, "time") + self.offset + pc.offset
+                # Remove overlapping keyframes
+                for prev_index in range(len(plaps) - 1, -1, -1):
+                    if keyframe_get(plaps[prev_index], "time") >= time_actual:
+                        plaps.pop(prev_index)
+                    else:
+                        break 
+
                 new_keyframe = (
                     copy.deepcopy(out_keyframe) if is_plap else copy.deepcopy(in_keyframe)
                 )
 
                 new_keyframe.set(
-                    "time", str(keyframe_get(keyframe, "time") + self.offset + pc.offset)
+                    "time", str(time_actual)
                 )
                 new_keyframe.set("value", str(preg_value))
 
@@ -227,7 +236,9 @@ class PlapGenerator:
                         new_keyframe.append(copy.deepcopy(curve_keyframe))
 
                 is_plap = not is_plap
-                base_interpolable.append(new_keyframe)
+                plaps.append(new_keyframe)
+
+            base_interpolable.extend(plaps)
 
         base_interpolable.set("alias", f"{pc.name}")
 
@@ -278,6 +289,8 @@ class PlapGenerator:
             for prev_index in range(len(plaps) - 1, -1, -1):
                 if keyframe_get(plaps[prev_index], "time") >= time_actual - 0.05:
                     plaps.pop(prev_index)
+                else:
+                    break
 
             mute_keyframe = copy.deepcopy(sfx_keyframe)
             mute_keyframe.set("time", str(time_actual - 0.05))
@@ -463,7 +476,7 @@ class PlapGenerator:
         try:
             next_frame = node_list[2]
         except IndexError:
-            raise IndexError("The reference keyframe cannot be the last keyframe.")
+            raise IndexError("The reference keyframe cannot be the last or only keyframe in the Time Range.")
 
         x = keyframe_get(next_frame, "valueX") - keyframe_get(reference, "valueX")
         y = keyframe_get(next_frame, "valueY") - keyframe_get(reference, "valueY")

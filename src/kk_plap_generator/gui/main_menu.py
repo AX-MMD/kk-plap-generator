@@ -195,8 +195,15 @@ class PlapUI(tk.Frame):
             filetypes=(("TOML files", "*.toml"),),
         )
         if file_path:
-            self.save_config(file_path.split(".")[0] + ".toml")
-            messagebox.showinfo("Success", "Config file exported successfully.")
+            # get the path and the path without the extension
+            path, ext = os.path.splitext(file_path)
+            path = path + ".toml"
+            self.save_config(path)
+            # check that the file was created
+            if os.path.isfile(path):
+                messagebox.showinfo("Success", f"Config file exported successfully to {path}.")
+            else:
+                messagebox.showerror("Error", f"Failed to export config file at {path}.")
 
         self.update_widgets()
 
