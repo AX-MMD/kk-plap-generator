@@ -5,7 +5,7 @@ from typing import List
 if getattr(sys, "frozen", False):
     # If the application is run as a bundle, the PyInstaller bootloader
     # sets the sys._MEIPASS attribute to the path of the bundle.
-    if os.path.dirname(sys.executable) == "bin":
+    if os.path.basename(os.path.dirname(sys.executable)) == "bin":
         WORKDIR = os.path.dirname(os.path.dirname(sys.executable))
     else:
         WORKDIR = os.path.dirname(sys.executable)
