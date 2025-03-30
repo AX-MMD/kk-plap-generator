@@ -7,7 +7,6 @@ authors = [
 ]
 readme = "README.md"
 requires-python = ">=3.12,<3.14"
-package-mode = false
 dependencies = [
     "toml (>=0.10.2,<0.11.0)",
 ]
@@ -29,6 +28,7 @@ pytest = "^8.3.4"
 
 [tool.poetry.group.release.dependencies]
 pyinstaller = "^6.11.1"
+cx-freeze = "^8.0.0"
 
 
 [build-system]
@@ -44,3 +44,14 @@ exclude = [
 [tool.ruff.lint]
 select = ["I", "F", "E", "W"]
 ignore = ["E203", "F811", "E501", "E266"]
+
+[tool.cxfreeze]
+executables = [
+    {script = "src/run_gui.py", base = "gui", target_name = "KoikatsuPlapGenerator.exe"}
+]
+
+[tool.cxfreeze.build_exe]
+excludes = ["unittest"]
+packages = ["os"]
+build_exe = "_dist/bin"
+include_msvcr = "True"
