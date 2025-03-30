@@ -217,7 +217,7 @@ class PlapGenerator:
                 time_actual = keyframe_get(keyframe, "time") + self.offset + pc.offset
                 # Remove overlapping keyframes
                 for prev_index in range(len(plaps) - 1, -1, -1):
-                    if keyframe_get(plaps[prev_index], "time") >= time_actual:
+                    if keyframe_get(plaps[prev_index], "time") >= time_actual - 0.05:
                         plaps.pop(prev_index)
                     else:
                         break
@@ -285,7 +285,7 @@ class PlapGenerator:
             time_actual = time + offset + pc.offset
             # Remove overlapping keyframes
             for prev_index in range(len(plaps) - 1, -1, -1):
-                if keyframe_get(plaps[prev_index], "time") >= time_actual - 0.05:
+                if keyframe_get(plaps[prev_index], "time") >= time_actual - 0.1:
                     plaps.pop(prev_index)
                 else:
                     break
