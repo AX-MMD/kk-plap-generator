@@ -1,6 +1,6 @@
 [project]
 name = "kk_plap_generator"
-version = "0.3.0"
+version = "0.4.0"
 description = ""
 authors = [
     {name = "AX-MMD",email = "ax.mmd.yt@gmail.com"}
@@ -51,7 +51,7 @@ executables = [
 ]
 
 [tool.cxfreeze.build_exe]
-excludes = ["unittest"]
+excludes = ["unittest", "email", "http", "tcl", "ssl", "socket", "ftplib"]
 packages = ["os"]
 build_exe = "_dist/bin"
 include_msvcr = "True"
