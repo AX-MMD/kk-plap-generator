@@ -57,8 +57,8 @@ NOTE: If the apex is in between 2 keyframes, always take the keyframe on the rig
       Path => Pos Waist
 
     In the "Time Ranges" tab:
-      Double click "00:00.0 - END" and change it to "<reference_time_here> - END" 
-
+      Double click "00:00.0 - END" and change it. Usually start time and reference time are the same, but you can pick a different reference keyframe.
+      The Reference Time does not need to be within the time range.
 
 Once that is done, if you didn't load the example config we need to configure Components. The 2 main components are MultiActivableComponent (MAC, usually for Studio sound items) and PregPlusComponent (Preg+).
 
@@ -77,8 +77,8 @@ Let's say you want a stomach bulge:
 
 You can click the ` ℹ ` icons for a full explanation of the parameters available to customize or apply corrections:
 
--- Use multiple reference interpolables using pages in the `Reference Interpolable` (For multiple actors/pairs).
--- Use multiple time ranges if actors change location during the scene, a new time range will refresh the reference.
+-- Use multiple reference interpolables using pages in the `Reference Interpolable` (ex. for multiple actors/pairs).
+-- Use multiple time ranges if actors change location during the scene to refresh the reference.
 -- A different keyframe generation pattern for activable Studio items.
 -- Add a `cutoff` to `Activable` or `MultiActivable` Components to stop a sound early.
 -- Offset the time of the keyframe (ex. audio items have some delay, so can compensate with offset).
@@ -229,8 +229,8 @@ You can combine multiple letters to create a more complex pattern or you can loa
 TIME_RANGES = """
 [-------------------------------- Time Ranges --------------------------------]
 
-A Time Range should start where your chosen reference keyframe is. 
-Select a keyframe where the reference is fully extended, for example when the dick is fully inserted.
+A Time Range tells the generator where to look in the Timeline. Components of a page will only generate keyframes for the time ranges defined. 
+For the Reference Time use the exact time of a keyframe in Timeline where the reference subject is fully extended, for example when the dick is fully inserted.
 
    __________
   |  Main    |
@@ -244,7 +244,8 @@ Select a keyframe where the reference is fully extended, for example when the di
     Path => Pos Waist
 
   In the "Time Ranges" tab:
-    Double click "00:00.0 - END" and change it to "<reference_time_here> - END"
+    Double click "00:00.0 - END" and change it. Usually start time and reference time are the same, but you can pick a different reference keyframe.
+    The Reference Time does not need to be within the time range.
 
 If there is a point in your scene where the reference moves to much from his starting location, make multiple Time Ranges instead.
 

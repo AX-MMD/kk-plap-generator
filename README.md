@@ -64,7 +64,8 @@ NOTE: If the apex is in between 2 keyframes, always take the keyframe on the rig
     * Path => Pos Waist
     
     In the "Time Ranges" tab:
-    * Double click "00:00.0 - END" and change it to "<reference_time_here> - END" 
+    * Double click "00:00.0 - END" and change it. Usually start time and reference time are the same, but you can pick a different reference keyframe.
+    * The Reference Time does not need to be within the time range.
 
 
 Once that is done, if you didn't load the example config we need to configure Components. The 2 main components are MultiActivableComponent (MAC, usually for Studio sound items) and PregPlusComponent (Preg+).
