@@ -126,22 +126,32 @@ class GroupConfig:
         ref_interpolable: str = "",
         ref_single_file: str = "",
         last_single_file_folder: str = "",
-        time_ranges: List[Tuple[str, str]] = [("00:00.00", "END")],
+        time_ranges: List[Tuple[str, str, str]] = [("00:00.00", "END", "00:00.00")],
         offset: float = 0.0,
         component_configs: List[dict] = [],
         min_pull_out: float = 0.2,
         min_push_in: float = 0.8,
+        invert_direction: bool = False,
     ):
         self.ref_interpolable: str = ref_interpolable
         self.ref_single_file: str = ref_single_file
         self.last_single_file_folder: str = last_single_file_folder
-        self.time_ranges: List[Tuple[str, str]] = time_ranges
+        self.time_ranges: List[Tuple[str, str, str]] = []
+        for t in time_ranges:
+            if len(t) == 2:
+                self.time_ranges.append((t[0], t[1], t[0]))
+            elif len(t) == 3:
+                self.time_ranges.append((t[0], t[1], t[2]))
+            else:
+                self.time_ranges.append(("00:00.00", "END", "00:00.00"))
+
         self.offset: float = offset
         self.component_configs: List[ComponentConfig] = [
             self._deserialize_component(cc) for cc in component_configs
         ]
         self.min_pull_out: float = min_pull_out
         self.min_push_in: float = min_push_in
+        self.invert_direction: bool = invert_direction
 
     def _deserialize_component(self, data: dict) -> ComponentConfig:
         component = STRING_TO_COMPONENT_CONFIG.get(data["type"])
@@ -160,6 +170,7 @@ class GroupConfig:
             "component_configs": [cc.to_toml_dict() for cc in self.component_configs],
             "min_pull_out": self.min_pull_out,
             "min_push_in": self.min_push_in,
+            "invert_direction": self.invert_direction,
         }
 
 

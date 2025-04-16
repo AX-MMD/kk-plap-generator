@@ -102,6 +102,21 @@ class SeqAdjustmentWidget(PlapWidget):
         self.min_push_in_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
         self.min_push_in_right_button.pack(side=tk.LEFT)
 
+        # # Invert direction checkbox
+        # self.invert_direction_label = tk.Label(self.offset_frame, text="Invert Direction")
+        # self.invert_direction_label.pack()
+        # self.invert_direction_frame = tk.Frame(self.offset_frame)
+        # self.invert_direction_frame.pack()
+
+        # self.invert_direction_var = tk.BooleanVar(value=self.app.store.invert_direction)
+        # self.invert_direction_checkbox = tk.Checkbutton(
+        #     self.invert_direction_frame,
+        #     text="Invert",
+        #     variable=self.invert_direction_var,
+        #     command=self.on_invert_direction_change,
+        # )
+        # self.invert_direction_checkbox.pack()
+
     def on_pull_slider_release(self, event):
         self.app.store.min_pull_out = self.min_pull_out_slider.get() / 100
 
@@ -113,6 +128,9 @@ class SeqAdjustmentWidget(PlapWidget):
         new_value = current_value + increment
         if 0 <= new_value <= 100:
             slider.set(new_value)
+
+    # def on_invert_direction_change(self):
+    #     self.app.store.invert_direction = self.invert_direction_var.get()
 
     def on_focus_out(self, event):
         try:
@@ -141,6 +159,6 @@ class SeqAdjustmentWidget(PlapWidget):
             raise ValidationError(errors=errors)
 
         self.app.store.min_push_in = self.min_push_in_slider.get() / 100
-        self.app.store.min_push_in = self.min_push_in_slider.get() / 100
+        self.app.store.min_pull_out = self.min_pull_out_slider.get() / 100
 
         return super().save()

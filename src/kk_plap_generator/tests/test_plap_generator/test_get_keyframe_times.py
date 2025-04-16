@@ -28,7 +28,7 @@ def interpolable_configs():
 def plap_generator(interpolable_configs) -> PlapGenerator:
     return PlapGenerator(
         interpolable_path="path/to/interpolable",
-        time_ranges=[("00:00.20", "00:10.00")],
+        time_ranges=[("00:00.20", "00:10.00", "00:00.20")],
         component_configs=[],
     )
 
@@ -285,7 +285,7 @@ def test_simple_w_curve(plap_generator: "PlapGenerator", keyframes_sets):
 def test_simple_w_curve_first_keyframe_is_reference(
     plap_generator: "PlapGenerator", keyframes_sets
 ):
-    plap_generator.time_ranges = [("00:00.00", "00:10.00")]
+    plap_generator.time_ranges = [("00:00.00", "00:10.00", "00:00.00")]
     sections = plap_generator.make_sections(keyframes_sets["simple_w_curve"])
     keyframe_times = plap_generator.get_plaps_from_keyframes(
         sections[0].reference, sections[0].keyframes

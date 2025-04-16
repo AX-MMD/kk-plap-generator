@@ -1,4 +1,4 @@
-from typing import Iterator, List, Optional, Union, cast
+from typing import Iterator, Optional, Sequence, Union, cast
 from xml.etree import ElementTree as et
 
 from kk_plap_generator.generator.utils import keyframe_get
@@ -39,34 +39,34 @@ class PositionKeyframe:
         return iter(list(self.node))
 
 
-class KeyframeReference(PositionKeyframe):
+class KeyframeReference:
+    value: float
+    time: float
     axis: str
     out_direction: float
     estimated_pull_out: float
 
     def __init__(
         self,
-        node: et.Element,
+        value: float,
+        time: float,
         *,
         axis: str,
         out_direction: float,
         estimated_pull_out: float,
     ):
-        super().__init__(node)
+        self.value = value
+        self.time = time
         self.axis = axis
         self.out_direction = out_direction
         self.estimated_pull_out = estimated_pull_out
 
-    @property
-    def value(self) -> float:
-        return keyframe_get(self.node, self.axis)
-
 
 class Section:
     reference: "KeyframeReference"
-    keyframes: List[et.Element]
+    keyframes: Sequence[et.Element]
 
-    def __init__(self, reference: "KeyframeReference", keyframes: List[et.Element]):
+    def __init__(self, reference: "KeyframeReference", keyframes: Sequence[et.Element]):
         self.reference = reference
         self.keyframes = keyframes
 
@@ -108,6 +108,17 @@ class PlapFrame:
             return self.valueY
         elif self.axis.value == "valueZ":
             return self.valueZ
+        else:
+            raise ValueError(f"Invalid axis: {self.axis.value}")
+
+    @value.setter
+    def value(self, value: float):
+        if self.axis.value == "valueX":
+            self.valueX = value
+        elif self.axis.value == "valueY":
+            self.valueY = value
+        elif self.axis.value == "valueZ":
+            self.valueZ = value
         else:
             raise ValueError(f"Invalid axis: {self.axis.value}")
 

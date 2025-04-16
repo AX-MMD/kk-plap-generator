@@ -47,7 +47,12 @@ def convert_KKtime_to_seconds(time_str: str) -> float:
         return math.inf
     else:
         minutes, seconds_fraction = time_str.split(":")
-        seconds, fraction = seconds_fraction.split(".")
+        if "." in seconds_fraction:
+            seconds, fraction = seconds_fraction.split(".")
+        else:
+            seconds = seconds_fraction
+            fraction = "0"
+
         return int(minutes) * 60 + int(seconds) + float(f"0.{fraction}")
 
 

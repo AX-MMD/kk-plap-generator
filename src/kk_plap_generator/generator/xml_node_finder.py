@@ -15,12 +15,14 @@ class NodeNotFoundError(Exception):
         *args,
         path: Optional[str] = None,
         xml_path: Optional[str] = None,
+        suggestions: Optional[List[str]] = None,
     ):
         self.node_name = node_name
         self.tag = tag
         self.value = value
         self.path = path
         self.xml_path = xml_path
+        self.suggestions = suggestions
         self.message = f"Node not found: {self.get_node_string()}"
         super().__init__(self.message, *args)
 
@@ -45,6 +47,17 @@ def deep_find_interpolable(node_list: List[et.Element], target: str) -> et.Eleme
                 return found
 
     return NODE_NOT_FOUND
+
+
+def deep_find_possible_matches(node_list: List[et.Element], target: str) -> List[str]:
+    matches = []
+    for node in node_list:
+        if node.tag == "interpolable" and node.get(target):
+            matches.append(node.get(target, ""))
+        else:
+            matches.extend(deep_find_possible_matches(list(node), target))
+
+    return matches
 
 
 def find_interpolable(root: et.Element, target: str) -> et.Element:

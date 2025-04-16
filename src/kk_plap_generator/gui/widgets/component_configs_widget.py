@@ -6,8 +6,6 @@ from typing import (
     List,
     Optional,
     Tuple,
-    Union,
-    cast,
 )
 
 from kk_plap_generator.generator.plap_generator import PlapGenerator
@@ -76,13 +74,17 @@ class ComponentConfigsWidget(PlapWidget):
     def update(self):
         self.components_listbox.delete(0, tk.END)
         for sc in self.app.store.component_configs:
+            if sc.offset == 0.0:
+                offset_str = ""
+            else:
+                offset_str = f"({'+' if sc.offset >= 0 else '-'}{abs(sc.offset)}s)"
+
             if isinstance(sc, ActivableComponentConfig):
                 if isinstance(sc, MultiActivableComponentConfig):
                     items = f"  ({len(sc.item_configs)})"
                 else:
                     items = "  "
-
-                offset_str = f"({'+' if sc.offset >= 0 else '-'}{abs(sc.offset)}s)"
+                
                 cutoff_str = f"(end:{sc.cutoff}s)" if sc.cutoff != math.inf else ""
                 self.components_listbox.insert(
                     tk.END, f"{sc.name}{items}{offset_str}{cutoff_str}"
@@ -90,7 +92,7 @@ class ComponentConfigsWidget(PlapWidget):
             elif isinstance(sc, PregPlusComponentConfig):
                 self.components_listbox.insert(
                     tk.END,
-                    f"{sc.name}  (min:{sc.min_value} max:{sc.max_value})  ({'+' if sc.offset >= 0 else '-'}{abs(sc.offset)}s)",
+                    f"{sc.name}  (min:{sc.min_value} max:{sc.max_value}){offset_str}",
                 )
 
     def edit_component(self, event=None):
@@ -139,7 +141,13 @@ class ComponentConfigDialog(simpledialog.Dialog):
         self.component_config: ComponentConfig = (
             component_config
             or MultiActivableComponentConfig(
-                name="MAC", item_configs=[ActivableComponentConfig("MAC-Item1")]
+                name="MAC",
+                item_configs=[
+                    ActivableComponentConfig("MAC-1"),
+                    ActivableComponentConfig("MAC-2"),
+                    ActivableComponentConfig("MAC-3"),
+                    ActivableComponentConfig("MAC-4"),
+                ],
             )
         )
         self.type_var = tk.StringVar(
@@ -218,17 +226,18 @@ class ComponentConfigDialog(simpledialog.Dialog):
                 self.component_config.name = "MAC"
 
             def name_entry_change(event):
-                if not self.name_entry.get():
-                    return
-
                 old_name = self.component_config.name
                 self.component_config.name = self.name_entry.get()
-                for name_entry, _, _, _ in self.item_entries:
+                for i, entries in enumerate(self.item_entries):
+                    name_entry = entries[0]
                     old_item_name = name_entry.get()
                     name_entry.delete(0, tk.END)
-                    name_entry.insert(
-                        0, old_item_name.replace(old_name, self.component_config.name)
-                    )
+                    if len(old_item_name) > 0:
+                        name_entry.insert(
+                            0, self.component_config.name + old_item_name[len(old_name) :]
+                        )
+                    else:
+                        name_entry.insert(0, self.component_config.name + str(i + 1))
 
             self.name_entry.bind("<KeyRelease>", name_entry_change)
 
@@ -360,7 +369,7 @@ class ComponentConfigDialog(simpledialog.Dialog):
                 item = ActivableComponentConfig(
                     name=name_entry.get()
                     if name_entry.get()
-                    else f"{self.component_config.name}-Item{i + 1}",
+                    else f"{self.component_config.name}-{i + 1}",
                 )
                 if cutoff := cutoff_entry.get():
                     item.cutoff = float(cutoff)
@@ -434,7 +443,7 @@ class MACTable(PlapWidget):
             i = len(self.item_entries)
             offset = float(self.item_entries[-1][1].get() if self.item_entries else 0)
             item = ActivableComponentConfig(
-                f"{self.component_config.name}-Item{i + 1}", offset=offset
+                f"{self.component_config.name}-{i + 1}", offset=offset
             )
 
         name_entry = tk.Entry(self.table_frame)
@@ -449,17 +458,18 @@ class MACTable(PlapWidget):
         cutoff_entry.grid(row=i + 1, column=2)
         cutoff_entry.insert(0, "" if item.cutoff == math.inf else str(item.cutoff))
 
-        def delete_table_row(row=i):
-            for widget in self.item_entries[row]:
-                cast(Union[tk.Entry, tk.Button], widget).grid_forget()
-            self.item_entries.pop(row)
-            self.component_config.item_configs.pop(row)
+        entry: Tuple[tk.Entry, tk.Entry, tk.Entry, tk.Button]
+
+        def delete_table_row():
+            for widget in entry:
+                widget.grid_forget()
+            self.item_entries.remove(entry)
             self.update_table_indices()
 
         delete_button = tk.Button(self.table_frame, text="-", command=delete_table_row)
         delete_button.grid(row=i + 1, column=3)
-
-        self.item_entries.append((name_entry, offset_entry, cutoff_entry, delete_button))
+        entry = (name_entry, offset_entry, cutoff_entry, delete_button)
+        self.item_entries.append(entry)
 
     def update_table_indices(self):
         for i, (name_entry, offset_entry, cutoff_entry, delete_button) in enumerate(
@@ -470,7 +480,7 @@ class MACTable(PlapWidget):
             cutoff_entry.grid(row=i + 1, column=2)
             delete_button.grid(row=i + 1, column=3)
             name_entry.delete(0, tk.END)
-            name_entry.insert(0, f"{self.component_config.name}-Item{i + 1}")
+            name_entry.insert(0, f"{self.component_config.name}-{i + 1}")
 
     # class ItemConfigsWidget(PlapWidget):
     #     def __init__(self, app: "PlapUI", masterframe):

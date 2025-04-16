@@ -5,7 +5,7 @@ import os
 from typing import (
     Dict,
     List,
-    Optional,
+    Sequence,
     Tuple,
     Union,
 )
@@ -24,12 +24,12 @@ from kk_plap_generator.generator.utils import (
     convert_KKtime_to_seconds,
     convert_seconds_to_KKtime,
     keyframe_get,
-    keyframe_set,
 )
 from kk_plap_generator.generator.xml_node_finder import (
     NODE_NOT_FOUND,
+    NodeNotFoundError,
     deep_find_interpolable,
-    find_interpolable,
+    deep_find_possible_matches,
     find_node,
 )
 from kk_plap_generator.models import (
@@ -83,9 +83,14 @@ class PlapGenerator:
         pass
 
     class ReferenceNotFoundError(Error):
-        def __init__(self, time: str):
+        def __init__(self, time: Union[str, float]):
             self.time = time
-            self.message = f"Reference keyframe not found at {time}."
+            if isinstance(time, float):
+                self.message = (
+                    f"Reference keyframe not found at {convert_seconds_to_KKtime(time)}."
+                )
+            else:
+                self.message = f"Reference keyframe not found at {time}."
             super().__init__(self.message)
 
     class NotSupportedInterpolableType(Error):
@@ -95,6 +100,9 @@ class PlapGenerator:
             super().__init__(self.message)
 
     class ValueError(Error):
+        pass
+
+    class NodeNotFoundError(Error):
         pass
 
     class GeneratorResult:
@@ -111,11 +119,12 @@ class PlapGenerator:
     def __init__(
         self,
         interpolable_path: str,
-        time_ranges: List[Tuple[str, str]],
+        time_ranges: List[Tuple[str, str, str]],
         component_configs: List[ComponentConfig],
         offset: float = 0.0,
         min_pull_out: float = 0.2,
         min_push_in: float = 0.8,
+        invert_direction: bool = False,
         template_path: str = settings.TEMPLATE_FILE,
     ):
         self.interpolable_path = interpolable_path
@@ -127,6 +136,7 @@ class PlapGenerator:
             )
         self.min_pull_out = float(min_pull_out)
         self.min_push_in = float(min_push_in)
+        self.invert_direction = invert_direction
         self.component_configs: List[ComponentConfig] = component_configs
         self.template_path = template_path
 
@@ -134,12 +144,30 @@ class PlapGenerator:
         self, timeline_xml_tree: et.ElementTree
     ) -> List["PlapGenerator.GeneratorResult"]:
         # Get the rythm from source single_file, will use parameters from the config to locate the node
-        ref_interpolable = deep_find_interpolable(
-            list(timeline_xml_tree.getroot()), self.interpolable_path.split(".")[-1]
-        )
+        root_nodes = list(timeline_xml_tree.getroot())
+        if self.interpolable_path == "":
+            ref_interpolable = NODE_NOT_FOUND
+        else:
+            ref_interpolable = deep_find_interpolable(root_nodes, self.interpolable_path)
+
+        while ref_interpolable is NODE_NOT_FOUND and root_nodes:
+            if len(root_nodes) == 1:
+                if root_nodes[0].tag == "interpolable":
+                    ref_interpolable = root_nodes[0]
+                else:
+                    root_nodes = list(root_nodes[0])
+            else:
+                root_nodes = []
+
         if ref_interpolable is NODE_NOT_FOUND:
-            ref_interpolable = find_interpolable(
-                timeline_xml_tree.getroot(), self.interpolable_path
+            possible_matches = deep_find_possible_matches(
+                list(timeline_xml_tree.getroot()), "alias"
+            )
+            raise NodeNotFoundError(
+                "interpolable",
+                "alias",
+                self.interpolable_path,
+                suggestions=possible_matches,
             )
 
         # Separate the keyframes into sections based on the time ranges
@@ -149,6 +177,7 @@ class PlapGenerator:
         template_tree = et.parse(
             os.path.join(os.path.dirname(os.path.abspath(__file__)), self.template_path)
         )
+        self._clean_xml(template_tree.getroot())
 
         # Generate the keyframes for each component
         results: List[PlapGenerator.GeneratorResult] = []
@@ -181,33 +210,32 @@ class PlapGenerator:
         pc: PregPlusComponentConfig,
     ) -> "PlapGenerator.GeneratorResult":
         base_interpolable, in_keyframe, out_keyframe = self.make_preg_plus_nodes(root, pc)
-        first_keyframe = copy.deepcopy(in_keyframe)
-        first_keyframe.set("time", str(0.0))
-        first_keyframe.set("value", str(0))
-        base_interpolable.append(first_keyframe)
+        base_interpolable.set("alias", f"{pc.name}")
 
         # For each keyframe in the sections, we assign a value between pc.min_value and pc.max_value
         # based on the distance from the reference keyframe.
         for section in sections:
             reference = section.reference
-            is_plap = True
+            is_plap = False
             plaps: List[et.Element] = []
 
             for keyframe in section.keyframes:
                 value = keyframe_get(keyframe, reference.axis)
-                distance = abs(value - reference.value)
-                if (
-                    value * reference.out_direction
-                    < reference.value * reference.out_direction
-                ):
-                    preg_value = pc.max_value
-                    is_plap = True
-                elif distance > reference.estimated_pull_out:
+                distance = self._calculate_distance(
+                    reference.value, value, reference.out_direction
+                )
+                # if (
+                #     value * reference.out_direction
+                #     < reference.value * reference.out_direction
+                # ):
+                #     preg_value = pc.max_value
+                #     is_plap = True
+                if distance > reference.estimated_pull_out:
                     preg_value = pc.min_value
                     is_plap = False
                 else:
                     preg_value = int(
-                        (reference.estimated_pull_out - distance)
+                        max(reference.estimated_pull_out - distance, 0.0)
                         / reference.estimated_pull_out
                         * pc.max_value
                     )
@@ -238,7 +266,14 @@ class PlapGenerator:
 
             base_interpolable.extend(plaps)
 
-        base_interpolable.set("alias", f"{pc.name}")
+        for child in list(base_interpolable):
+            if keyframe_get(child, "time") > 0.5:
+                first_keyframe = copy.deepcopy(in_keyframe)
+                first_keyframe.set("time", str(0.0))
+                first_keyframe.set("value", str(0))
+                base_interpolable.insert(0, first_keyframe)
+
+            break
 
         return PlapGenerator.GeneratorResult(
             [base_interpolable],
@@ -326,14 +361,15 @@ class PlapGenerator:
             (
                 convert_seconds_to_KKtime(keyframe_times[0]),
                 convert_seconds_to_KKtime(keyframe_times[-1]),
-            ),
+            )
+            if keyframe_times
+            else ("00:00:00", "00:00:00"),
         )
 
     def get_plaps_from_keyframes(
         self,
         reference: "KeyframeReference",
-        keyframes: List[et.Element],
-        curve_reference: Optional[et.Element] = None,
+        keyframes: Sequence[et.Element],
     ) -> List[float]:
         keyframe_times: List[float] = []
         did_plap = False
@@ -381,7 +417,11 @@ class PlapGenerator:
             value = self._round(reference.value - value_diff * (1.0 - value))
             will_plap = self.evaluate_is_plap(reference, value, did_plap)
             if not did_plap and will_plap:
-                if evaluated_values[i] > evaluated_values[i + 1]:
+                if (
+                    evaluated_values[i] > evaluated_values[i + 1]
+                    or value * reference.out_direction
+                    >= reference.value * reference.out_direction
+                ):
                     time_diff = reference.time - keyframe_get(curve_reference, "time")
                     time_offset = time_diff * (1.0 - time)
                     keyframe_times.append(self._round(reference.time - time_offset))
@@ -394,7 +434,9 @@ class PlapGenerator:
     def evaluate_is_plap(
         self, reference: "KeyframeReference", value: float, did_plap: bool
     ) -> bool:
-        distance = abs(reference.value - value)
+        distance = self._calculate_distance(
+            reference.value, value, reference.out_direction
+        )
         if did_plap:
             # Only say not plapping after a minimum distance in the out direction is reached.
             # This is to avoid spam during rapid micro movements, like during orgams and such.
@@ -405,6 +447,10 @@ class PlapGenerator:
                 >= self._round(self.min_pull_out * reference.estimated_pull_out)
                 # Round to avoid floating point errors
             ):
+                if settings.IS_DEV:
+                    print(
+                        f"ref{reference.value} reftime{reference.time} value{value} distance{distance} pull{reference.estimated_pull_out} v{self.min_pull_out}, {self._round(self.min_pull_out * reference.estimated_pull_out)}"
+                    )
                 return False
             else:
                 return did_plap
@@ -421,33 +467,56 @@ class PlapGenerator:
 
     def make_sections(self, ref_interpolable: et.Element) -> List["Section"]:
         sections: List[Section] = []
+        keyframes = list(ref_interpolable)
+        if not keyframes:
+            return sections
 
-        for time_start, time_end in self.get_time_ranges_sec():
-            kfs = []
-            # Will be used to check curve keyframes preceding the reference.
-            before_start_keyframe = None
+        for time_start, time_end, ref_time in self.get_time_ranges_sec():
+            kfs: List[et.Element] = []
+            ref_kfs = None
+            prev_kf = keyframes[0]
+
+            if ref_time < keyframe_get(prev_kf, "time"):
+                ref_time = keyframe_get(prev_kf, "time")
+            if time_start < keyframe_get(prev_kf, "time"):
+                time_start = keyframe_get(prev_kf, "time")
 
             # Get the keyframes that are within the time range
-            for kf in list(ref_interpolable):
+            for i, kf in enumerate(keyframes):
                 time = keyframe_get(kf, "time")
                 if (
                     self._std_time(time_start) - 0.00001 <= time
                     and self._std_time(time) <= time_end + 0.00001
                 ):
+                    if not kfs:
+                        kfs.append(prev_kf)
+
                     kfs.append(kf)
-                elif len(kfs) == 0:
-                    before_start_keyframe = kf
-                else:
-                    break  # We are done with the time range
 
-            if before_start_keyframe is not None:
-                kfs.insert(0, before_start_keyframe)
-            else:
-                kfs.insert(0, kfs[0])
+                if ref_time >= self._std_time(time) - 0.00001:
+                    ref_kfs = (prev_kf, kf, keyframes[i + 1])
 
-            reference = self.get_reference(kfs)
+                prev_kf = kf
 
-            sections.append(Section(reference, kfs))
+            if kfs:
+                if self._std_time(ref_time) == self._std_time(time_start):
+                    try:
+                        ref_kfs = (kfs[0], kfs[1], kfs[2])
+                    except IndexError:
+                        raise IndexError(
+                            "The reference keyframe cannot be the last or only keyframe in the Time Range."
+                        )
+                elif ref_kfs is None:
+                    raise self.ReferenceNotFoundError(convert_seconds_to_KKtime(ref_time))
+                if settings.IS_DEV:
+                    print(
+                        f"k0: {keyframe_get(kfs[0], 'time')} k1: {keyframe_get(kfs[1], 'time')} k2: {keyframe_get(kfs[2], 'time')}"
+                    )
+                    print(
+                        f"ref_time: {ref_time} ref_kfs0: {keyframe_get(ref_kfs[0], 'time')} ref_kfs1: {keyframe_get(ref_kfs[1], 'time')} ref_kfs2: {keyframe_get(ref_kfs[2], 'time')}"
+                    )
+                reference = self.get_reference(ref_kfs, ref_time, kfs)
+                sections.append(Section(reference, kfs))
 
         return sections
 
@@ -462,60 +531,75 @@ class PlapGenerator:
 
         return sequence
 
-    def get_reference(self, node_list: List[et.Element]) -> "KeyframeReference":
+    def get_reference(
+        self,
+        ref_nodes: Tuple[et.Element, et.Element, et.Element],
+        ref_time: float,
+        node_list: Sequence[et.Element],
+    ) -> "KeyframeReference":
         # The first keyframe of a time range should be a keyframe where the two bodies collide.
         # Here it's second because we add the preceding frame for curve evaluation.
-        reference = node_list[1]
+        axis = PlapAxis()
+        plap_frames = self._convert_to_plapframes(ref_nodes[:2], axis)
+        reference: PlapFrame = plap_frames[-1]
+        for frame in plap_frames:
+            if frame.time <= ref_time:
+                reference = frame
+            else:
+                break
 
+        if settings.IS_DEV:
+            print(
+                f"ref time{ref_time} ref_nodes1:{ref_nodes[0].get('time')} ref_nodes2:{ref_nodes[1].get('time')} ref_nodes3:{ref_nodes[2].get('time')} plap{reference.time}"
+            )
+            print(
+                f"ref_node_X{ref_nodes[1].get('valueX')} ref_node_Y{ref_nodes[1].get('valueY')} ref_node_Z{ref_nodes[1].get('valueZ')}"
+            )
+            print(
+                f"ref_next_X{ref_nodes[2].get('valueX')} ref_next_Y{ref_nodes[2].get('valueY')} ref_next_Z{ref_nodes[2].get('valueZ')}"
+            )
+
+            print(
+                f"plap_X{reference.valueX} plap_Y{reference.valueY} plap_Z{reference.valueZ}"
+            )
         # We check the next keyframe and calculate the difference between reference and next_keyframe.
         # The axis with the biggest difference will be our axis reference.
         # We also use the difference to determnine the direction of the pull out as 1 or -1.
-        next_frame = None
-        try:
-            next_frame = node_list[2]
-        except IndexError:
-            raise IndexError(
-                "The reference keyframe cannot be the last or only keyframe in the Time Range."
-            )
+        next_frame = ref_nodes[2]
 
-        x = keyframe_get(next_frame, "valueX") - keyframe_get(reference, "valueX")
-        y = keyframe_get(next_frame, "valueY") - keyframe_get(reference, "valueY")
-        z = keyframe_get(next_frame, "valueZ") - keyframe_get(reference, "valueZ")
+        x = keyframe_get(next_frame, "valueX") - keyframe_get(ref_nodes[1], "valueX")
+        y = keyframe_get(next_frame, "valueY") - keyframe_get(ref_nodes[1], "valueY")
+        z = keyframe_get(next_frame, "valueZ") - keyframe_get(ref_nodes[1], "valueZ")
 
         if abs(z) < abs(x) > abs(y):
-            axis = "valueX"
-            out_direction = x / abs(x)
-            value_diff = keyframe_get(reference, "valueX") - keyframe_get(
-                next_frame, "valueX"
-            )
+            axis.value = "valueX"
+            # out_direction = x / abs(x)
+            # value_diff = keyframe_get(ref_nodes[1], "valueX") - keyframe_get(next_frame, "valueX")
         elif abs(z) < abs(y) > abs(x):
-            axis = "valueY"
-            out_direction = y / abs(y)
-            value_diff = keyframe_get(reference, "valueY") - keyframe_get(
-                next_frame, "valueY"
-            )
+            axis.value = "valueY"
+            # out_direction = y / abs(y)
+            # value_diff = keyframe_get(ref_nodes[1], "valueY") - keyframe_get(next_frame, "valueY")
         else:
-            axis = "valueZ"
-            out_direction = z / abs(z)
-            value_diff = keyframe_get(reference, "valueZ") - keyframe_get(
-                next_frame, "valueZ"
-            )
+            axis.value = "valueZ"
+            # out_direction = z / abs(z)
+            # value_diff = keyframe_get(ref_nodes[1], "valueZ") - keyframe_get(next_frame, "valueZ")
 
-        _, evaluated_values = evaluate_curve(list(node_list[0]))
-        compare_func = min if out_direction == -1 else max
-        ref_value = keyframe_get(reference, axis)
-        # ref_value = compare_func(
-        #     (ref_value, *(ref_value + value_diff * v for v in evaluated_values))
-        # )
+        if keyframe_get(next_frame, axis.value) > keyframe_get(ref_nodes[1], axis.value):
+            out_direction = 1.0
+        else:
+            out_direction = -1.0
+
+        if self.invert_direction:
+            out_direction *= -1.0
 
         # We then try and estimate the pull out distance by taking the biggest difference
-        # between the reference keyframe and (up too) the next 5 keyframes, using the curve keyframes
-
+        # between the reference keyframe other keyframes, using the curve keyframes
+        compare_func = min if out_direction == -1 else max
         estimated_pull_out = 0.0
-        for i in range(1, min(6, len(node_list) - 1)):
+        for i in range(len(node_list) - 1):
             kf = node_list[i]
-            value = keyframe_get(kf, axis)
-            value_diff = keyframe_get(node_list[i + 1], axis) - value
+            value = keyframe_get(kf, axis.value)
+            value_diff = keyframe_get(node_list[i + 1], axis.value) - value
             value = compare_func(
                 (
                     value,
@@ -525,30 +609,29 @@ class PlapGenerator:
                     ),
                 )
             )
-            estimated_pull_out = max(estimated_pull_out, abs(value - ref_value))
+            estimated_pull_out = max(estimated_pull_out, abs(value - reference.value))
+
+        reference.value = self._round(reference.value)
 
         if estimated_pull_out == 0.0:
             raise ValueError(
                 "Could not estimate the pull out distance with available data"
                 + f"\n> node_list length: {len(node_list)}"
                 + f"\n> axis: {axis}"
-                + f"\n> ref_value: {ref_value}"
-                + f"\n> original ref_value: {keyframe_get(reference, axis)}"
+                + f"\n> ref_value: {reference.value}"
             )
         elif settings.IS_DEV:
             print(
-                f"Estimated pull out distance for {axis} at {keyframe_get(reference, 'time')}: {estimated_pull_out}"
-                + f"\n> ref_value: {ref_value}"
-                + f"\n> original ref_value: {keyframe_get(reference, axis)}"
+                f"Estimated pull out distance for {axis} at {reference.time}: {estimated_pull_out}"
+                + f"\n> ref_value: {reference.value}"
                 + f"\n> out_direction: {out_direction}"
                 + f"\n> axis: {axis}"
             )
 
-        keyframe_set(reference, axis, self._round(ref_value))
-
         return KeyframeReference(
-            reference,
-            axis=axis,
+            value=reference.value,
+            time=reference.time,
+            axis=axis.value,
             out_direction=out_direction,
             estimated_pull_out=self._round(estimated_pull_out),
         )
@@ -608,22 +691,31 @@ class PlapGenerator:
 
         return base_sfx, sfx_keyframe
 
-    def get_time_ranges_sec(self) -> List[Tuple[float, float]]:
+    def get_time_ranges_sec(self) -> List[Tuple[float, float, float]]:
         if self.time_ranges:
-            ranges = [
-                [convert_KKtime_to_seconds(tg[0]), convert_KKtime_to_seconds(tg[1])]
-                for tg in self.time_ranges
-            ]
+            ranges = []
+            first: float
+            # Convert the time ranges from KKtime to seconds
+            for tg in self.time_ranges:
+                ranges.append(
+                    [
+                        (first := convert_KKtime_to_seconds(tg[0])),
+                        convert_KKtime_to_seconds(tg[1]),
+                        convert_KKtime_to_seconds(tg[2]) if tg[2] else first,
+                    ]
+                )
             # Make sure the ranges are sorted and don't overlap
             ranges.sort(key=lambda x: x[0])
             for i in range(0, len(ranges) - 1):
                 if ranges[i][1] > ranges[i + 1][0]:
                     ranges[i][1] = ranges[i + 1][0] - 0.00001
 
-            return [(ranges[i][0], ranges[i][1]) for i in range(0, len(ranges))]
+            return [
+                (ranges[i][0], ranges[i][1], ranges[i][2]) for i in range(0, len(ranges))
+            ]
 
         else:
-            return [(0.0, math.inf)]
+            return [(0.0, math.inf, 0.0)]
 
     def _round(self, value: float) -> float:
         return round(value, 5)
@@ -635,8 +727,25 @@ class PlapGenerator:
     def _std_time(self, time: Union[str, int, float]) -> float:
         return self._truncate(float(time))
 
+    def _clean_xml(self, xml: et.Element) -> None:
+        # Remove all formatting (strip whitespace and newlines)
+        for element in list(xml):
+            self._clean_xml(element)
+            if element.text:
+                element.text = element.text.strip()
+            if element.tail:
+                element.tail = element.tail.strip()
+
+    def _calculate_distance(
+        self, reference_value: float, value: float, out_direction: float
+    ) -> float:
+        if value * out_direction <= reference_value * out_direction:
+            return 0.0
+        else:
+            return self._round(abs(reference_value - value))
+
     def _convert_to_plapframes(
-        self, keyframes: List[et.Element], shared_axis: PlapAxis
+        self, keyframes: Sequence[et.Element], shared_axis: PlapAxis
     ) -> List[PlapFrame]:
         plapframes: List[PlapFrame] = []
         for keyframe, next_keyframe in zip(keyframes, keyframes[1:]):

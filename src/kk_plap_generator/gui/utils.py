@@ -6,6 +6,7 @@ from typing import Dict, List, Tuple
 import toml
 
 from kk_plap_generator.generator.plap_generator import PlapGenerator
+from kk_plap_generator.generator.utils import keyframe_get
 from kk_plap_generator.models import (
     GroupConfig,
 )
@@ -49,7 +50,22 @@ def generate_plaps(groups: typing.List[GroupConfig]):
             for interpolable in result.interpolables:
                 alias = interpolable.get("alias", "")
                 if alias in interpolables:
-                    interpolables[alias][0].extend(interpolable.findall("keyframe"))
+                    ref_time = keyframe_get(list(interpolables[alias][0])[-1], "time")
+                    index = next(
+                        (
+                            i
+                            for i, kf in enumerate(interpolable)
+                            if keyframe_get(kf, "time") > ref_time + 0.01
+                        ),
+                        -1,  # Default value if no match is found
+                    )
+                    if index == -1:
+                        log_print(
+                            f"Warning: No new keyframes found for {alias} in {group.ref_single_file}.",
+                            output,
+                        )
+
+                    interpolables[alias][0].extend(interpolable[index:])
                     op_type = "Added"
                 else:
                     interpolables[alias] = (interpolable, group.ref_single_file)
@@ -67,7 +83,7 @@ def generate_plaps(groups: typing.List[GroupConfig]):
         tree = et.ElementTree(et.Element("root"))
         tree.getroot().append(interpolable)
         filename = os.path.join(os.path.dirname(ref_single_file_path), f"{alias}.xml")
-        tree.write(filename)
+        tree.write(filename, method="xml", encoding="UTF-8", xml_declaration=False)
         log_print(f"> Generated '{filename}'", output)
 
     return output

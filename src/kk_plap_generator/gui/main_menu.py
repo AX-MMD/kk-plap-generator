@@ -108,7 +108,6 @@ class PlapUI(tk.Frame):
 
     def on_program_close(self):
         try:
-            self.widgets_save()
             self.save_config()
         except Exception:
             traceback.print_exc()
@@ -220,7 +219,7 @@ class PlapUI(tk.Frame):
             raise ValidationError(errors=errors)
 
     def generate_plaps(self):
-        if self.dnd_widget.get_single_file() is None:
+        if not self.dnd_widget.get_single_file():
             messagebox.showerror("Error", "Please select a file.xml")
         else:
             try:
@@ -240,10 +239,14 @@ class PlapUI(tk.Frame):
                     message += f'\n> Make sure the path\n    "{self.store.ref_interpolable}"\n is correct.'
                 elif e.node_name == "interpolable":
                     message += f'\n> Could not find the interpolable\n    "{e.value}"\n  in the xml file.'
+                    if e.suggestions:
+                        message += "\n> The following aliases where found:"
+                        for match in e.suggestions:
+                            message += f"\n    {match}"
                     message += (
                         "\n> Make sure you renamed the interpolable in the Timeline."
+                        + "\n  This is needed so an alias is created."
                     )
-                    message += "\n  This is needed so an alias is created."
                 else:
                     message += f'\n> Could not find the node\n    "{e.node_name}"\n  in the xml file.'
                 CustomMessageBox(self, "Failled ✖", message)

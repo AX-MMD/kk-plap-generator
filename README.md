@@ -23,7 +23,7 @@ The process is as follows:
 ### EXPORT TIMELINE SINGLE FILE ###############################################
 ___
 > In CharaStudio
-* Choose an interpolable like "GO Pos Waist", Hips, Dick, pshere/folder, etc. Rotation is fine too.
+* Choose an interpolable like "GO Pos Waist", Hips, Dick, sphere/folder, etc. Rotation is fine too.
 * Rename it with an alias, can also just Rename -> ctrl+X -> ctrl+V.
 * Timeline -> Single Files -> Save.
 
@@ -66,15 +66,13 @@ NOTE: If the apex is in between 2 keyframes, always take the keyframe on the rig
     In the "Time Ranges" tab:
     * Double click "00:00.0 - END" and change it to "<reference_time_here> - END" 
 
-    If the generator has trouble finding the reference keyframe try giving the full path, "Main.male.Pos Waist" for this example. Check the TROUBLESHOOTING section for more help.
-
 
 Once that is done, if you didn't load the example config we need to configure Components. The 2 main components are MultiActivableComponent (MAC, usually for Studio sound items) and PregPlusComponent (Preg+).
 
 Let's say you have 4 sound items in your scene:
 * In Components, click "+" to add a MAC component then add MAC-Items until you have 4 (the amount of sound items).
 * Adjust the offsets as needed to account for sound delays of the items.
-* Make sure you don't have multiple components with the same name.
+* Make sure you don't have multiple components with the same name on one page.
 * Click Ok.
 
 Let's say you want a stomach bulge:
@@ -89,7 +87,7 @@ You can click the ` ℹ ` icons for a full explanation of the parameters availab
 * Use multiple reference interpolables using pages in the `Reference Interpolable` (For multiple actors/pairs).
 * Use multiple time ranges if actors change location during the scene, a new time range will refresh the reference.
 * A different keyframe generation pattern for activable Studio items.
-* Add a `cutoff` to `Activable` or `MultiActivable` Components` if you want to use a "loop" item.
+* Add a `cutoff` to `Activable` or `MultiActivable` Components to stop a sound early.
 * Offset the time of the keyframe (ex. audio items have some delay, so can compensate with offset).
 * Adjust the margin of error accepted to register a keyframe.
 
