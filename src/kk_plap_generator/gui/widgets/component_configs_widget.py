@@ -84,7 +84,7 @@ class ComponentConfigsWidget(PlapWidget):
                     items = f"  ({len(sc.item_configs)})"
                 else:
                     items = "  "
-                
+
                 cutoff_str = f"(end:{sc.cutoff}s)" if sc.cutoff != math.inf else ""
                 self.components_listbox.insert(
                     tk.END, f"{sc.name}{items}{offset_str}{cutoff_str}"
